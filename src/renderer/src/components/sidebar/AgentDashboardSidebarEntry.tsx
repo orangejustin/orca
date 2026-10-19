@@ -35,6 +35,7 @@ function DashboardBucketCounts({
       {active.map((bucket) => (
         <span
           key={bucket}
+          role="img"
           aria-label={`${dashboardBucketLabel(bucket)}: ${counts[bucket]}`}
           title={bucket === 'done' ? dashboardTurnEndedDescription() : undefined}
           className="inline-flex items-center gap-1 text-[10px] tabular-nums text-worktree-sidebar-foreground/55"

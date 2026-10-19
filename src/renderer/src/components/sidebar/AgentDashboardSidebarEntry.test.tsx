@@ -34,19 +34,19 @@ describe('AgentDashboardSidebarEntry turn-ended summary', () => {
   it('names the ended-turn count and explains its meaning in the title', () => {
     render(<AgentDashboardSidebarEntry />)
 
-    expect(screen.getByLabelText('Turn ended: 3')).toHaveAttribute(
+    expect(screen.getByRole('img', { name: 'Turn ended: 3' })).toHaveAttribute(
       'title',
       'An agent turn ended. Task acceptance has not been verified.'
     )
-    expect(screen.getByLabelText('Idle: 4')).not.toHaveAttribute('title')
-    expect(screen.queryByLabelText('Done: 3')).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Idle: 4' })).not.toHaveAttribute('title')
+    expect(screen.queryByRole('img', { name: 'Done: 3' })).not.toBeInTheDocument()
   })
 
   it('uses the Chinese ended-turn label and explanation', async () => {
     await i18n.changeLanguage('zh')
     render(<AgentDashboardSidebarEntry />)
 
-    expect(screen.getByLabelText('本轮结束: 3')).toHaveAttribute(
+    expect(screen.getByRole('img', { name: '本轮结束: 3' })).toHaveAttribute(
       'title',
       '仅表示智能体本轮已结束，不代表任务已通过验收。'
     )

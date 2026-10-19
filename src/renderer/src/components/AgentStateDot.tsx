@@ -170,6 +170,7 @@ export const AgentStateDot = React.memo(function AgentStateDot({
     // intentionally diverges (emerald dot + tooltip) — see file header.
     indicator = (
       <span
+        role="img"
         className={cn('inline-flex shrink-0 items-center justify-center', box, className)}
         aria-label={label}
       >
