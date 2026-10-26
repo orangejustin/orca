@@ -15,6 +15,7 @@ import { resolveTerminalProcessExitRestartStartup } from './terminal-process-exi
 import type { PaneProcessExit, PtyConnectionDeps } from './pty-connection-types'
 import type { TerminalPaneCloseController } from './use-terminal-pane-close-actions'
 import type { AccountRestartAgent } from '@/store/terminals/terminal-contracts'
+import { registerMountedAgentSessionRestart } from '@/lib/agent-session-restart-mounted'
 
 export function useTerminalPaneProcessExitActions(controller: TerminalPaneCloseController) {
   const {
@@ -201,6 +202,35 @@ export function useTerminalPaneProcessExitActions(controller: TerminalPaneCloseC
     },
     [clearPaneProcessExit, executeClosePane]
   )
+
+  useLayoutEffect(() => {
+    const manager = managerRef.current
+    if (!manager) {
+      return
+    }
+    const unregister: (() => void)[] = []
+    for (const pane of manager.getPanes()) {
+      const ptyId =
+        paneTransportsRef.current.get(pane.id)?.getPtyId() ?? pane.container.dataset.ptyId
+      if (!ptyId) {
+        continue
+      }
+      unregister.push(
+        registerMountedAgentSessionRestart(ptyId, (startup) => {
+          if (!managerRef.current?.getPanes().some((candidate) => candidate.id === pane.id)) {
+            return false
+          }
+          handleRestartPane(pane.id, startup, { focus: false })
+          return true
+        })
+      )
+    }
+    return () => {
+      for (const dispose of unregister) {
+        dispose()
+      }
+    }
+  }, [handleRestartPane, managerRef, paneTransportsRef, savedLayout.ptyIdsByLeafId])
 
   const panePtyLayoutBindings = savedLayout.ptyIdsByLeafId
   useLayoutEffect(() => {

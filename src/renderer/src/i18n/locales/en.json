@@ -582,6 +582,15 @@
       "actionPermissions": {
         "sameAsAgent": "Same as {{agent}}"
       }
+    },
+    "manageSessions": {
+      "restartAgents": "Restart agents",
+      "restartOtherHost": "This computer cannot replace agents on another host, so those sessions were left running.",
+      "queuedLabel": "Queued",
+      "pendingLabel": "Pending",
+      "restartedLabel": "Restarted",
+      "failedLabel": "Failed",
+      "skippedLabel": "Skipped"
     }
   },
   "menu": {
@@ -11593,7 +11602,8 @@
             "454df22a5e": "fish",
             "ddd5efe113": "shell",
             "3de504994c": "Shell and arguments used for new local interactive terminal panes",
-            "1733ccd3e9": "Terminal shell"
+            "1733ccd3e9": "Terminal shell",
+            "restartAgents": "restart agents"
           },
           "windows": {
             "search": {
