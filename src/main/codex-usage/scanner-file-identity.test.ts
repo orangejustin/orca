@@ -42,6 +42,7 @@ vi.mock('node:fs/promises', async () => {
 
 vi.mock('../codex/codex-home-paths', () => ({
   getOrcaManagedCodexHomePath: () => join(fixture.root, 'runtime'),
+  resolveOrcaManagedCodexHomePath: () => join(fixture.root, 'runtime'),
   getSystemCodexHomePath: () => join(fixture.root, 'system')
 }))
 
