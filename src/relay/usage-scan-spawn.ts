@@ -1,7 +1,7 @@
-import { fork } from 'node:child_process'
 import { join } from 'node:path'
 import { pickAllowedEnv, RUNTIME_ENV_ALLOWLIST } from '../main/ai-vault/session-scanner-service-env'
 import { lowerAiVaultServicePriority } from '../main/ai-vault/session-scanner-service-priority'
+import { forkProcess } from '../shared/child-process/fork-process'
 import { usageScanOutputSchema } from '../shared/usage-scan-relay'
 import type { UsageScanJobInput, UsageScanJobOutput } from './usage-scan-job'
 
@@ -34,11 +34,11 @@ export function runUsageScanInChild(
   entryPath = join(__dirname, RELAY_USAGE_SCAN_ENTRY_FILENAME)
 ): Promise<UsageScanJobOutput> {
   return new Promise((resolve, reject) => {
-    const child = fork(entryPath, [], {
+    const child = forkProcess({
+      modulePath: entryPath,
       stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
       execArgv: ['--max-old-space-size=768'],
-      env: buildRelayUsageScanEnv(input.timeZone),
-      ...(process.platform === 'win32' ? { windowsHide: true } : {})
+      env: buildRelayUsageScanEnv(input.timeZone)
     })
     lowerAiVaultServicePriority(child.pid)
     let settled = false
