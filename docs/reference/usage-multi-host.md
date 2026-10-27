@@ -21,11 +21,11 @@ each is next to its row mapper (`src/main/*-usage/*-usage-rows.ts`).
 
 ## Cost has three sources
 
-| Source        | Meaning                                                              |
-| ------------- | -------------------------------------------------------------------- |
-| **reported**  | The CLI wrote a price in its own log (OpenCode). Shown as recorded.  |
-| **estimated** | Tokens times the bundled price table: an API-equivalent figure.      |
-| **unknown**   | No price for that model. Counted as tokens, excluded from dollars.   |
+| Source        | Meaning                                                             |
+| ------------- | ------------------------------------------------------------------- |
+| **reported**  | The CLI wrote a price in its own log (OpenCode). Shown as recorded. |
+| **estimated** | Tokens times the bundled price table: an API-equivalent figure.     |
+| **unknown**   | No price for that model. Counted as tokens, excluded from dollars.  |
 
 Unknown is not zero: the cost panel states how many tokens no dollar figure includes. A model is
 never priced by resemblance to another. Estimated prices are applied per request, so a request
@@ -70,15 +70,15 @@ pruned when the relay changes.
 
 ### Reading a host's state
 
-| Status          | Meaning                                                                  |
-| --------------- | ------------------------------------------------------------------------ |
-| This computer   | Local scan.                                                              |
-| Up to date      | Last request succeeded.                                                  |
-| Stale           | Request failed or could not be verified; the last good result is shown   |
-|                 | with the time it was taken.                                              |
-| Unavailable     | Not connected and nothing cached.                                        |
-| Not covered     | The host's relay predates the CLI or the method.                         |
-| Not synced yet  | Never asked.                                                             |
+| Status         | Meaning                                                                |
+| -------------- | ---------------------------------------------------------------------- |
+| This computer  | Local scan.                                                            |
+| Up to date     | Last request succeeded.                                                |
+| Stale          | Request failed or could not be verified; the last good result is shown |
+|                | with the time it was taken.                                            |
+| Unavailable    | Not connected and nothing cached.                                      |
+| Not covered    | The host's relay predates the CLI or the method.                       |
+| Not synced yet | Never asked.                                                           |
 
 Losing contact with a host is never read as "no usage" or "the work ended"
 (see [`ssh-execution-boundary.md`](./ssh-execution-boundary.md)): a failed sync keeps the last

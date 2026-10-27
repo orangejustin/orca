@@ -1,14 +1,6 @@
 import { toSshExecutionHostId } from '../../../shared/execution-host'
 import { USAGE_ADAPTER_CATALOG } from '../../../shared/usage-adapter-catalog'
-import {
-  isUsageScanRelayCli,
-  USAGE_SCAN_RELAY_METHOD,
-  USAGE_SCAN_RELAY_TIMEOUT_MS,
-  usageScanRelayResultSchema,
-  type UsageScanRelayFile,
-  type UsageScanRelayPage,
-  type UsageScanRelayWorktree
-} from '../../../shared/usage-scan-relay'
+import { isUsageScanRelayCli, type UsageScanRelayWorktree } from '../../../shared/usage-scan-relay'
 import type {
   UsageHostCliCoverage,
   UsageHostCoverage,
@@ -17,20 +9,16 @@ import type {
 import type { UsageAdapterStore } from '../usage-adapter-registry'
 import type { HostUsageFile } from './usage-host-merge'
 import type { RemoteCliUsage, RemoteUsageCache } from './remote-usage-cache'
+import {
+  describeFailure,
+  readRemainingUsagePages,
+  requestUsageScanPage,
+  StaleScanResultError,
+  type UsageHostMux
+} from './remote-usage-scan-request'
 import { sanitizeUnifiedUsage } from './sanitize-unified-usage'
 
-const MAX_REMOTE_FILES_PER_SYNC = 100_000
-const MAX_MESSAGE_LENGTH = 240
-
-/** The slice of the SSH multiplexer a sync needs. */
-export type UsageHostMux = {
-  request(
-    method: string,
-    params: Record<string, unknown>,
-    options?: { timeoutMs?: number; signal?: AbortSignal }
-  ): Promise<unknown>
-  isDisposed(): boolean
-}
+export type { UsageHostMux }
 
 export type UsageHostCoordinatorDeps = {
   cache: RemoteUsageCache
@@ -56,16 +44,6 @@ export type UsageHostSyncArgs = {
   clis?: string[]
   signal?: AbortSignal
 }
-
-function boundedMessage(message: string): string {
-  return message.length > MAX_MESSAGE_LENGTH ? `${message.slice(0, MAX_MESSAGE_LENGTH)}…` : message
-}
-
-function describeFailure(error: unknown): string {
-  return boundedMessage(error instanceof Error ? error.message : String(error))
-}
-
-class StaleScanResultError extends Error {}
 
 /**
  * Keeps a per-host, per-CLI copy of what each SSH host reported about its own CLI logs, and says
@@ -293,22 +271,6 @@ export class UsageHostCoordinator {
     }
   }
 
-  private async requestPage(
-    mux: UsageHostMux,
-    params: Record<string, unknown>,
-    signal?: AbortSignal
-  ) {
-    const reply = await mux.request(USAGE_SCAN_RELAY_METHOD, params, {
-      timeoutMs: USAGE_SCAN_RELAY_TIMEOUT_MS,
-      signal
-    })
-    const parsed = usageScanRelayResultSchema.safeParse(reply)
-    if (!parsed.success) {
-      throw new Error('The host returned a usage reply Orca could not read.')
-    }
-    return parsed.data
-  }
-
   private async fetchAndStore(
     mux: UsageHostMux,
     target: { id: string; label: string },
@@ -327,7 +289,7 @@ export class UsageHostCoordinator {
     // A result replaced mid-read cannot be stitched from two scans; start over once.
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const first = await this.requestPage(mux, base, signal)
+        const first = await requestUsageScanPage(mux, base, signal)
         if (first.kind === 'unsupported-cli') {
           this.setLive(hostId, cli, 'unsupported', 'This host’s relay does not scan this CLI.')
           return
@@ -337,7 +299,7 @@ export class UsageHostCoordinator {
           this.setLive(hostId, cli, 'ok', null)
           return
         }
-        const files = await this.readRemainingPages(mux, base, first, signal)
+        const files = await readRemainingUsagePages(mux, base, first, signal)
         await this.deps.cache.set(hostId, target.label, cli, {
           revision: first.revision,
           timeZone: first.timeZone,
@@ -352,40 +314,5 @@ export class UsageHostCoordinator {
         }
       }
     }
-  }
-
-  private async readRemainingPages(
-    mux: UsageHostMux,
-    base: { cli: string; timeZone: string; worktrees: UsageScanRelayWorktree[] },
-    first: UsageScanRelayPage,
-    signal?: AbortSignal
-  ): Promise<UsageScanRelayFile[]> {
-    const files = [...first.files]
-    let next = first.nextOffset
-    while (next !== null) {
-      if (files.length > MAX_REMOTE_FILES_PER_SYNC) {
-        throw new Error('The host reported more usage files than Orca will read.')
-      }
-      let page
-      try {
-        page = await this.requestPage(
-          mux,
-          { ...base, page: { revision: first.revision, offset: next } },
-          signal
-        )
-      } catch (error) {
-        // The relay refuses a page of a result it has since replaced.
-        if (error instanceof Error && /changed/.test(error.message)) {
-          throw new StaleScanResultError(error.message)
-        }
-        throw error
-      }
-      if (page.kind !== 'page' || page.revision !== first.revision) {
-        throw new StaleScanResultError('The host’s usage result changed while it was being read.')
-      }
-      files.push(...page.files)
-      next = page.nextOffset
-    }
-    return files
   }
 }

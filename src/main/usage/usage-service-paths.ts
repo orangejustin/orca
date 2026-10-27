@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import { join } from 'node:path'
+import { initRegisteredUsageAdapterPaths } from './usage-adapter-registry'
 
 // Why: capture the paths after configureDevUserDataPath() but before app.setName() changes
 // Electron's derived userData location, as the per-CLI usage caches do.
@@ -10,6 +11,7 @@ export function initUsageServicePaths(): void {
   const userData = app.getPath('userData')
   preferencesFile = join(userData, 'orca-usage-preferences.json')
   hostCacheFile = join(userData, 'orca-usage-hosts.json')
+  initRegisteredUsageAdapterPaths()
 }
 
 export function getUsagePreferencesFile(): string {

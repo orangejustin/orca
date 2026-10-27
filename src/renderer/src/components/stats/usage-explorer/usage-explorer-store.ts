@@ -11,6 +11,8 @@ type ExplorerStatus = 'idle' | 'loading' | 'ready' | 'unavailable'
 export type UsageExplorerState = {
   filters: UsageQueryFilters
   snapshot: UsageViewSnapshot | null
+  /** When the snapshot arrived; relative times on screen are read against this, not the render clock. */
+  receivedAt: number | null
   status: ExplorerStatus
   /** Set when the last read failed; the previous snapshot stays on screen beside it. */
   error: string | null
@@ -47,7 +49,7 @@ export function createUsageExplorerStore(getApi: () => UsageServiceApi | undefin
         const snapshot = await api.query(get().filters)
         // Why: a slower, older query must not overwrite the answer to the filters now on screen.
         if (request === latestRequest) {
-          set({ snapshot, status: 'ready', error: null })
+          set({ snapshot, receivedAt: Date.now(), status: 'ready', error: null })
         }
       } catch (error) {
         if (request === latestRequest) {
@@ -87,6 +89,7 @@ export function createUsageExplorerStore(getApi: () => UsageServiceApi | undefin
     return {
       filters: { ...DEFAULT_USAGE_QUERY_FILTERS },
       snapshot: null,
+      receivedAt: null,
       status: 'idle',
       error: null,
       refreshing: false,

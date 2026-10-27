@@ -110,7 +110,7 @@ export function UsageDailyChart({ daily, totals }: UsageDailyChartProps): React.
                 '{{value0}}: {{value1}} tokens',
                 { value0: day.day, value1: day.totalTokens.toLocaleString() }
               )}
-              className="min-w-px flex-1 rounded-t-[2px] bg-foreground/70 hover:bg-foreground focus-visible:bg-foreground focus-visible:outline-none"
+              className="min-w-px max-w-6 flex-1 rounded-t-[2px] bg-foreground/70 hover:bg-foreground focus-visible:bg-foreground focus-visible:outline-none"
               style={{ height: `${Math.max((day.totalTokens / peak) * 100, 2)}%` }}
               onMouseEnter={() => setActiveDay(day)}
               onFocus={() => setActiveDay(day)}

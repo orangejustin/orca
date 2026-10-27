@@ -24,6 +24,7 @@ import { UsageHostCoverage } from './UsageHostCoverage'
 
 export function UsageExplorerPane(): React.JSX.Element {
   const snapshot = useUsageExplorer((state) => state.snapshot)
+  const receivedAt = useUsageExplorer((state) => state.receivedAt)
   const status = useUsageExplorer((state) => state.status)
   const error = useUsageExplorer((state) => state.error)
   const filters = useUsageExplorer((state) => state.filters)
@@ -69,7 +70,7 @@ export function UsageExplorerPane(): React.JSX.Element {
   }
 
   const { result } = snapshot
-  const now = Date.now()
+  const now = receivedAt ?? 0
   const hasRows = result.totals.totalTokens > 0
   const idle = snapshot.adapters.filter((adapter) => !adapter.collecting && !adapter.hidden)
 

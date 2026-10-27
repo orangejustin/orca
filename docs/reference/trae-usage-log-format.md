@@ -31,9 +31,9 @@ Roots, in order: `~/.trae-cn`, `~/.trae`, `$XDG_CACHE_HOME/coco/sessions` (defau
 
 ### Record families
 
-| Family                | Recognised by                                                                                  | Meaning                                                                              |
-| --------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `token_usage_record`  | `type` (or `payload.type`) equal to `token_usage_record`                                       | One request. Usage under `usage`, `token_usage`, `payload.usage`, `payload`, or self |
+| Family                | Recognised by                                                                                    | Meaning                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `token_usage_record`  | `type` (or `payload.type`) equal to `token_usage_record`                                         | One request. Usage under `usage`, `token_usage`, `payload.usage`, `payload`, or self |
 | `token_count` (older) | `type`/`payload.type` equal to `token_count`, with `info.total_token_usage` / `last_token_usage` | Cumulative snapshots, Codex-shaped; turned into per-request increments               |
 
 Field spellings tolerated: `input_tokens` / `prompt_tokens` / `input`; `output_tokens` /

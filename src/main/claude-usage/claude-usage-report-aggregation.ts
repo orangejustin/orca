@@ -13,7 +13,10 @@ import { getFilteredDaily, getFilteredSessions } from './claude-usage-scope-filt
 
 // Why: each row is priced with its per-request tier sums, never a threshold over the row's total.
 // A row whose model has no price entry is unpriced, which is not the same as free.
-export function priceDailyRow(row: ClaudeUsageDailyAggregate): { cost: number | null; tokens: number } {
+export function priceDailyRow(row: ClaudeUsageDailyAggregate): {
+  cost: number | null
+  tokens: number
+} {
   return {
     cost: estimateCostUsd(
       row.model,
