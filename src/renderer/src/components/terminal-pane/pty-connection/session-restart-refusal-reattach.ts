@@ -67,6 +67,8 @@ export function reattachRefusedSessionRestart(
     callbacks
   })
   session.bindActivePanePty(predecessorPtyId, { replacePtyId: predecessorPtyId })
+  // The restart suppressed this pty's exit; it is live again, so its real exit must surface.
+  useAppStore.getState().consumeSuppressedPtyExit(predecessorPtyId)
   return refusal
 }
 

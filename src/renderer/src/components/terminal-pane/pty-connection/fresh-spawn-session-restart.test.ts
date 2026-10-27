@@ -137,7 +137,8 @@ describe('fresh spawn session restart settlement', () => {
   it('reattaches the predecessor with the spawn callbacks after a wrapped pre-stop refusal', async () => {
     useAppStore.setState({
       tabsByWorktree: { wt: [makeTerminalTab({ id: 'tab', worktreeId: 'wt', generation: 1 })] },
-      terminalLayoutsByTabId: {}
+      terminalLayoutsByTabId: {},
+      suppressedPtyExitIds: { 'pty-old': true }
     })
     const wrapped = new Error(
       `Error invoking remote method 'pty:spawn': Error: ${SESSION_RESTART_REFUSED_BEFORE_STOP}: prove`
@@ -157,6 +158,7 @@ describe('fresh spawn session restart settlement', () => {
       replacePtyId: 'pty-old'
     })
     expect(refused.settled).toContainEqual({ refusedBeforeStop: true })
+    expect(useAppStore.getState().suppressedPtyExitIds['pty-old']).toBeUndefined()
   })
 
   it('does not adopt a predecessor after the pane generation changes', async () => {

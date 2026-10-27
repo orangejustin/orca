@@ -114,16 +114,14 @@ export function buildAgentSessionRestartStartup(
   if (!startupPlan) {
     return null
   }
-  let env = startupPlan.env ? { ...startupPlan.env } : undefined
-  if (agent === 'claude' && !env?.CLAUDE_CONFIG_DIR?.trim()) {
-    const home = claudeConfigDirFromTranscriptPath(
-      providerSession.transcriptPath,
-      providerSession.id
-    )
-    if (!home) {
-      return null
-    }
-    env = { ...env, CLAUDE_CONFIG_DIR: home }
+  const env = startupPlan.env ? { ...startupPlan.env } : undefined
+  // Main pins the transcript's home; it alone knows whether that home is the default one.
+  if (
+    agent === 'claude' &&
+    !env?.CLAUDE_CONFIG_DIR?.trim() &&
+    !claudeConfigDirFromTranscriptPath(providerSession.transcriptPath, providerSession.id)
+  ) {
+    return null
   }
   return {
     startupCommandDelivery: 'shell-ready',

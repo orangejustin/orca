@@ -133,7 +133,7 @@ describe('buildAgentSessionRestartStartup', () => {
     expect(startup?.resumeProviderSession.id).toBe(SESSION_ID)
   })
 
-  it('pins a managed Claude home from the transcript when the recorded env is empty', () => {
+  it('admits a Claude restart whose transcript proves the home, leaving the pin to main', () => {
     seedAgentStatus({
       agentType: 'claude',
       providerSession: {
@@ -146,7 +146,7 @@ describe('buildAgentSessionRestartStartup', () => {
 
     const startup = buildAgentSessionRestartStartup('claude', PANE)
 
-    expect(startup?.env?.CLAUDE_CONFIG_DIR).toBe('/accounts/A')
+    expect(startup?.env?.CLAUDE_CONFIG_DIR).toBeUndefined()
     expect(startup?.command).toContain(SESSION_ID)
   })
 
