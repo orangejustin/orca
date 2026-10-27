@@ -7,7 +7,7 @@ import { CodexUsagePane } from './CodexUsagePane'
 import { GrokUsagePane } from './GrokUsagePane'
 import { OpenCodeUsagePane } from './OpenCodeUsagePane'
 import { MuseUsagePane } from './MuseUsagePane'
-import { UsageOverviewPane } from './UsageOverviewPane'
+import { UsageExplorerPane } from './usage-explorer/UsageExplorerPane'
 import { Button } from '../ui/button'
 import {
   DropdownMenu,
@@ -208,7 +208,7 @@ export function StatsPane(): React.JSX.Element {
             vertical jitter below the usage card when switching disabled providers. */}
         <div>
           {activeUsageTab === 'overview' ? (
-            <UsageOverviewPane />
+            <UsageExplorerPane />
           ) : activeUsageTab === 'claude' ? (
             <ClaudeUsagePane />
           ) : activeUsageTab === 'codex' ? (

@@ -7,9 +7,29 @@ import type {
   ClaudeUsageScope,
   ClaudeUsageSummary
 } from '../../shared/claude-usage-types'
-import type { ClaudeUsagePersistedState } from './types'
-import { estimateCostUsd } from './claude-model-pricing'
+import type { ClaudeUsageDailyAggregate, ClaudeUsagePersistedState } from './types'
+import { estimateCostUsd, NO_CLAUDE_TIER_ABOVE } from './claude-model-pricing'
 import { getFilteredDaily, getFilteredSessions } from './claude-usage-scope-filters'
+
+// Why: each row is priced with its per-request tier sums, never a threshold over the row's total.
+// A row whose model has no price entry is unpriced, which is not the same as free.
+export function priceDailyRow(row: ClaudeUsageDailyAggregate): {
+  cost: number | null
+  tokens: number
+} {
+  return {
+    cost: estimateCostUsd(
+      row.model,
+      row.inputTokens,
+      row.outputTokens,
+      row.cacheReadTokens,
+      row.cacheWriteTokens,
+      row.cacheWrite1hTokens,
+      row.tierAboveTokens ?? NO_CLAUDE_TIER_ABOVE
+    ),
+    tokens: row.inputTokens + row.outputTokens + row.cacheReadTokens + row.cacheWriteTokens
+  }
+}
 
 export function buildSummary(
   state: ClaudeUsagePersistedState,
@@ -28,7 +48,8 @@ export function buildSummary(
   const byModel = new Map<string, number>()
   const byProject = new Map<string, number>()
   let estimatedCostUsd = 0
-  let hasAnyBillableCost = false
+  let pricedTokens = 0
+  let unpricedTokens = 0
 
   for (const row of filteredDaily) {
     inputTokens += row.inputTokens
@@ -43,17 +64,12 @@ export function buildSummary(
       row.projectLabel,
       (byProject.get(row.projectLabel) ?? 0) + row.inputTokens + row.outputTokens
     )
-    const cost = estimateCostUsd(
-      row.model,
-      row.inputTokens,
-      row.outputTokens,
-      row.cacheReadTokens,
-      row.cacheWriteTokens,
-      row.cacheWrite1hTokens
-    )
-    if (cost !== null) {
-      hasAnyBillableCost = true
+    const { cost, tokens } = priceDailyRow(row)
+    if (cost === null) {
+      unpricedTokens += tokens
+    } else {
       estimatedCostUsd += cost
+      pricedTokens += tokens
     }
   }
 
@@ -72,7 +88,10 @@ export function buildSummary(
     cacheWriteTokens,
     cacheReuseRate:
       inputTokens + cacheReadTokens > 0 ? cacheReadTokens / (inputTokens + cacheReadTokens) : null,
-    estimatedCostUsd: hasAnyBillableCost ? estimatedCostUsd : null,
+    estimatedCostUsd: pricedTokens > 0 ? estimatedCostUsd : null,
+    hasUnpricedModels: unpricedTokens > 0,
+    pricedTokenShare:
+      pricedTokens + unpricedTokens > 0 ? pricedTokens / (pricedTokens + unpricedTokens) : null,
     topModel,
     topProject,
     // Why: the empty-state UX is scope/range specific. Using global persisted
@@ -112,8 +131,7 @@ export function buildBreakdown(
   kind: ClaudeUsageBreakdownKind
 ): ClaudeUsageBreakdownRow[] {
   const rows = new Map<string, ClaudeUsageBreakdownRow>()
-  // Why: the 1h cache-write split only feeds pricing, so it stays off the renderer row type.
-  const cacheWrite1hTokensByKey = new Map<string, number>()
+  const pricedTokensByKey = new Map<string, number>()
   const filteredDaily = getFilteredDaily(state, scope, range)
   const filteredSessions = getFilteredSessions(state, scope, range)
 
@@ -129,17 +147,21 @@ export function buildBreakdown(
       outputTokens: 0,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
-      estimatedCostUsd: null
+      estimatedCostUsd: null,
+      hasUnpricedTokens: false
     }
     existing.turns += daily.turnCount
     existing.inputTokens += daily.inputTokens
     existing.outputTokens += daily.outputTokens
     existing.cacheReadTokens += daily.cacheReadTokens
     existing.cacheWriteTokens += daily.cacheWriteTokens
-    cacheWrite1hTokensByKey.set(
-      key,
-      (cacheWrite1hTokensByKey.get(key) ?? 0) + daily.cacheWrite1hTokens
-    )
+    const { cost, tokens } = priceDailyRow(daily)
+    if (cost === null) {
+      existing.hasUnpricedTokens = true
+    } else {
+      existing.estimatedCostUsd = (existing.estimatedCostUsd ?? 0) + cost
+      pricedTokensByKey.set(key, (pricedTokensByKey.get(key) ?? 0) + tokens)
+    }
     rows.set(key, existing)
   }
 
@@ -169,15 +191,8 @@ export function buildBreakdown(
   }
 
   for (const row of rows.values()) {
-    if (kind === 'model') {
-      row.estimatedCostUsd = estimateCostUsd(
-        row.key,
-        row.inputTokens,
-        row.outputTokens,
-        row.cacheReadTokens,
-        row.cacheWriteTokens,
-        cacheWrite1hTokensByKey.get(row.key) ?? 0
-      )
+    if ((pricedTokensByKey.get(row.key) ?? 0) === 0) {
+      row.estimatedCostUsd = null
     }
   }
 

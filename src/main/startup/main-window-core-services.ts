@@ -31,6 +31,7 @@ export function attachMainWindowCoreServices(
   const codexUsage = state.codexUsage
   const openCodeUsage = state.openCodeUsage
   const museUsage = state.museUsage
+  const usageService = state.usageService
   const codexAccounts = state.codexAccounts
   const claudeAccounts = state.claudeAccounts
   const rateLimits = state.rateLimits
@@ -46,6 +47,7 @@ export function attachMainWindowCoreServices(
     !codexUsage ||
     !openCodeUsage ||
     !museUsage ||
+    !usageService ||
     !codexAccounts ||
     !claudeAccounts ||
     !rateLimits ||
@@ -102,7 +104,8 @@ export function attachMainWindowCoreServices(
     state.pluginService ?? undefined,
     state.pluginMarketplaceService && state.pluginMarketplaceInstaller
       ? { marketplace: state.pluginMarketplaceService, installer: state.pluginMarketplaceInstaller }
-      : undefined
+      : undefined,
+    usageService
   )
   automations.setWebContents(window.webContents)
   automations.start()

@@ -76,6 +76,8 @@ import type { ClaudeUsageStore } from '../../claude-usage/store'
 import type { CodexUsageStore } from '../../codex-usage/store'
 import type { OpenCodeUsageStore } from '../../opencode-usage/store'
 import type { MuseUsageStore } from '../../muse-usage/store'
+import type { UsageQueryService } from '../../usage/usage-query-service'
+import { registerUsageQueryHandlers } from '../usage-query-handlers'
 import type { RateLimitService } from '../../rate-limits/service'
 import type { CodexAccountService } from '../../codex-accounts/service'
 import type { ClaudeAccountService } from '../../claude-accounts/service'
@@ -129,7 +131,8 @@ export function registerCoreHandlers(
   keybindings?: KeybindingService,
   lifecycleOptions: CoreHandlerLifecycleOptions = {},
   pluginService?: PluginService,
-  marketplaceServices?: PluginMarketplaceHandlerServices
+  marketplaceServices?: PluginMarketplaceHandlerServices,
+  usageService?: UsageQueryService
 ): void {
   // Why: on macOS the app can stay alive after all windows close, then
   // openMainWindow() is called again on 'activate'. ipcMain.handle() throws
@@ -148,6 +151,9 @@ export function registerCoreHandlers(
   registerCliHandlers()
   registerPreflightHandlers()
   registerUsageProviderHandlers({ claudeUsage, codexUsage, openCodeUsage, museUsage })
+  if (usageService) {
+    registerUsageQueryHandlers(usageService)
+  }
   registerCodexAccountHandlers(codexAccounts, () => store.getSettings())
   registerAgentHookHandlers(runtime, { getPtyIdForPaneKey })
   registerCodexConfigSyncHandlers(codexAccounts.runtimeHomeService)

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  existsSync,
   linkSync,
   lstatSync,
   mkdirSync,
@@ -139,6 +140,34 @@ describe('getCodexSessionsDirectory', () => {
     expect(getCodexSessionsDirectory()).toBe(
       join(userDataDir, 'codex-runtime-home', 'home', 'sessions')
     )
+  })
+})
+
+describe('getCodexSessionDirectories', () => {
+  it('does not create Orca’s managed Codex home just to read sessions', async () => {
+    await listCodexSessionFiles()
+
+    expect(existsSync(join(userDataDir, 'codex-runtime-home'))).toBe(false)
+  })
+
+  it('also reads a Codex home chosen with CODEX_HOME, for runs made outside Orca', async () => {
+    const ambientHome = join(fakeHomeDir, 'custom-codex')
+    const ambientSessionsDir = join(ambientHome, 'sessions')
+    mkdirSync(ambientSessionsDir, { recursive: true })
+    writeFileSync(join(ambientSessionsDir, 'outside.jsonl'), '{}\n', 'utf-8')
+    process.env.CODEX_HOME = ambientHome
+
+    expect(getCodexSessionDirectories()).toContain(ambientSessionsDir)
+    expect(await listCodexSessionFiles()).toEqual([join(ambientSessionsDir, 'outside.jsonl')])
+  })
+
+  it('lists the default home once when CODEX_HOME points at it', () => {
+    process.env.CODEX_HOME = join(fakeHomeDir, '.codex')
+
+    const directories = getCodexSessionDirectories()
+    expect(
+      directories.filter((dir) => dir === join(fakeHomeDir, '.codex', 'sessions'))
+    ).toHaveLength(1)
   })
 })
 

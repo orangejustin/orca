@@ -59,6 +59,7 @@ export function openMainWindow(options: { revealOnDidFinishLoad?: boolean } = {}
     codexUsage: state.codexUsage,
     openCodeUsage: state.openCodeUsage,
     museUsage: state.museUsage,
+    usageService: state.usageService,
     rateLimits: state.rateLimits,
     automations: state.automations,
     codexAccounts: state.codexAccounts,

@@ -192,23 +192,86 @@ function normalizeModelForPricing(model: string | null): string | null {
   return null
 }
 
-function calculateTieredCost(
+/**
+ * Tokens billed at a model's long-context rate, per bucket, summed over requests. Linear in the
+ * request sum, so it can live in an aggregate and still be re-priced against the current table.
+ */
+export type ClaudeTierAboveTokens = {
+  input: number
+  output: number
+  cacheRead: number
+  cacheWrite5m: number
+  cacheWrite1h: number
+}
+
+export const NO_CLAUDE_TIER_ABOVE: ClaudeTierAboveTokens = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite5m: 0,
+  cacheWrite1h: 0
+}
+
+type ClaudeCacheWriteSplit = { write5mTokens: number; write1hTokens: number; write1hShare: number }
+
+function splitCacheWrites(
+  cacheWriteTokens: number,
+  cacheWrite1hTokens: number
+): ClaudeCacheWriteSplit {
+  const write1hTokens = Math.min(Math.max(cacheWrite1hTokens, 0), cacheWriteTokens)
+  return {
+    write5mTokens: cacheWriteTokens - write1hTokens,
+    write1hTokens,
+    write1hShare: cacheWriteTokens > 0 ? write1hTokens / cacheWriteTokens : 0
+  }
+}
+
+/**
+ * Above-threshold tokens of ONE request, or null when the model has no long-context tier.
+ * Callers sum these across requests; the threshold must never see an aggregate's total.
+ */
+export function claudeRequestTierAboveTokens(
+  model: string | null,
+  inputTokens: number,
+  outputTokens: number,
+  cacheReadTokens: number,
+  cacheWriteTokens: number,
+  cacheWrite1hTokens = 0
+): ClaudeTierAboveTokens | null {
+  const normalized = normalizeModelForPricing(model)
+  const threshold = normalized ? MODEL_PRICING[normalized].thresholdTokens : undefined
+  if (threshold === undefined) {
+    return null
+  }
+  const writes = splitCacheWrites(cacheWriteTokens, cacheWrite1hTokens)
+  const above = (tokens: number, limit: number): number => Math.max(tokens - limit, 0)
+  // Why: both TTL buckets share one long-context allowance. Giving each its own
+  // would make a split bucket cheaper than the same tokens billed entirely at 5m.
+  return {
+    input: above(inputTokens, threshold),
+    output: above(outputTokens, threshold),
+    cacheRead: above(cacheReadTokens, threshold),
+    cacheWrite5m: above(writes.write5mTokens, threshold * (1 - writes.write1hShare)),
+    cacheWrite1h: above(writes.write1hTokens, threshold * writes.write1hShare)
+  }
+}
+
+function bucketCost(
   tokens: number,
   basePrice: number,
-  abovePrice?: number,
-  threshold?: number
+  abovePrice: number | undefined,
+  aboveTokens: number
 ): number {
-  if (threshold === undefined || abovePrice === undefined) {
-    return tokens * basePrice
-  }
-  const belowTokens = Math.min(tokens, threshold)
-  const aboveTokens = Math.max(tokens - threshold, 0)
-  return belowTokens * basePrice + aboveTokens * abovePrice
+  return (
+    tokens * basePrice + (abovePrice === undefined ? 0 : aboveTokens * (abovePrice - basePrice))
+  )
 }
 
 /**
  * @param cacheWriteTokens every cache write, both TTLs
  * @param cacheWrite1hTokens the 1-hour-TTL subset of `cacheWriteTokens`
+ * @param tierAbove per-request above-threshold sums for an aggregate. Omitted, the tokens are
+ *   treated as one request and the threshold applies to them directly.
  */
 export function estimateCostUsd(
   model: string | null,
@@ -216,52 +279,58 @@ export function estimateCostUsd(
   outputTokens: number,
   cacheReadTokens: number,
   cacheWriteTokens: number,
-  cacheWrite1hTokens = 0
+  cacheWrite1hTokens = 0,
+  tierAbove?: ClaudeTierAboveTokens
 ): number | null {
   const normalized = normalizeModelForPricing(model)
   if (!normalized) {
     return null
   }
   const pricing = MODEL_PRICING[normalized]
-  const write1hTokens = Math.min(Math.max(cacheWrite1hTokens, 0), cacheWriteTokens)
-  // Why: both TTL buckets share one long-context allowance. Giving each its own
-  // would make a split bucket cheaper than the same tokens billed entirely at 5m.
-  const write1hShare = cacheWriteTokens > 0 ? write1hTokens / cacheWriteTokens : 0
-  const write5mThreshold =
-    pricing.thresholdTokens === undefined ? undefined : pricing.thresholdTokens * (1 - write1hShare)
-  const write1hThreshold =
-    pricing.thresholdTokens === undefined ? undefined : pricing.thresholdTokens * write1hShare
-  return (
-    (calculateTieredCost(
+  const writes = splitCacheWrites(cacheWriteTokens, cacheWrite1hTokens)
+  const above =
+    tierAbove ??
+    claudeRequestTierAboveTokens(
+      model,
       inputTokens,
-      pricing.input,
-      pricing.inputAboveThreshold,
-      pricing.thresholdTokens
-    ) +
-      calculateTieredCost(
-        outputTokens,
-        pricing.output,
-        pricing.outputAboveThreshold,
-        pricing.thresholdTokens
-      ) +
-      calculateTieredCost(
+      outputTokens,
+      cacheReadTokens,
+      cacheWriteTokens,
+      cacheWrite1hTokens
+    ) ??
+    NO_CLAUDE_TIER_ABOVE
+  return (
+    (bucketCost(inputTokens, pricing.input, pricing.inputAboveThreshold, above.input) +
+      bucketCost(outputTokens, pricing.output, pricing.outputAboveThreshold, above.output) +
+      bucketCost(
         cacheReadTokens,
         pricing.cacheRead,
         pricing.cacheReadAboveThreshold,
-        pricing.thresholdTokens
+        above.cacheRead
       ) +
-      calculateTieredCost(
-        cacheWriteTokens - write1hTokens,
+      bucketCost(
+        writes.write5mTokens,
         pricing.cacheWrite,
         pricing.cacheWriteAboveThreshold,
-        write5mThreshold
+        above.cacheWrite5m
       ) +
-      calculateTieredCost(
-        write1hTokens,
+      bucketCost(
+        writes.write1hTokens,
         pricing.cacheWrite1h,
         pricing.cacheWrite1hAboveThreshold,
-        write1hThreshold
+        above.cacheWrite1h
       )) /
     1_000_000
   )
+}
+
+export function addClaudeTierAboveTokens(
+  target: ClaudeTierAboveTokens,
+  source: ClaudeTierAboveTokens
+): void {
+  target.input += source.input
+  target.output += source.output
+  target.cacheRead += source.cacheRead
+  target.cacheWrite5m += source.cacheWrite5m
+  target.cacheWrite1h += source.cacheWrite1h
 }

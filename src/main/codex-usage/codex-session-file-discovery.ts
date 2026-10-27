@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { existsSync } from 'node:fs'
 import { realpath, readdir, stat } from 'node:fs/promises'
-import { getOrcaManagedCodexHomePath, getSystemCodexHomePath } from '../codex/codex-home-paths'
+import { resolveOrcaManagedCodexHomePath, getSystemCodexHomePath } from '../codex/codex-home-paths'
 import { getCodexAccountHomeSessionDirectories } from '../codex/codex-account-home-discovery'
 import { getLegacyCopiedCodexSessionBridgeScanPreference } from '../codex/codex-session-bridge'
 import { normalizeFsPath } from '../usage/usage-path-comparison'
@@ -58,7 +58,15 @@ export function getCodexSessionsDirectory(): string {
   // Why: Orca-launched Codex processes receive an Orca-owned CODEX_HOME, so
   // callers that need the primary runtime path should not consult ambient
   // shell CODEX_HOME.
-  return join(getOrcaManagedCodexHomePath(), 'sessions')
+  // Why: path only. A usage scan only reads, and on a remote host it must not create Orca's
+  // managed home just to look for sessions.
+  return join(resolveOrcaManagedCodexHomePath(), 'sessions')
+}
+
+/** The sessions dir of a Codex home chosen with CODEX_HOME, which holds runs made outside Orca. */
+function getAmbientCodexSessionsDirectory(): string | null {
+  const ambientHome = process.env.CODEX_HOME?.trim()
+  return ambientHome ? join(ambientHome, 'sessions') : null
 }
 
 export function getCodexSessionDirectories(): string[] {
@@ -68,12 +76,13 @@ export function getCodexSessionDirectories(): string[] {
   return [
     getCodexSessionsDirectory(),
     join(getSystemCodexHomePath(), 'sessions'),
-    ...getCodexAccountHomeSessionDirectories()
+    ...getCodexAccountHomeSessionDirectories(),
+    ...[getAmbientCodexSessionsDirectory()].filter((dirPath) => dirPath !== null)
   ].filter((dirPath, index, allDirPaths) => allDirPaths.indexOf(dirPath) === index)
 }
 
 function hasLegacyCopiedSessionBridgeMarkers(): boolean {
-  return existsSync(join(getOrcaManagedCodexHomePath(), '.orca-session-copies'))
+  return existsSync(join(resolveOrcaManagedCodexHomePath(), '.orca-session-copies'))
 }
 
 export async function listCodexSessionFiles(): Promise<string[]> {

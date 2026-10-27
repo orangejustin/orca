@@ -2,8 +2,22 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { readdir } from 'node:fs/promises'
 
-const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects')
-const CLAUDE_TRANSCRIPTS_DIR = join(homedir(), '.claude', 'transcripts')
+/**
+ * Claude Code keeps transcripts under its config dir, which `CLAUDE_CONFIG_DIR` relocates. The
+ * default `~/.claude` stays listed too, so history written before the override is still read.
+ */
+export function resolveClaudeTranscriptRoots(
+  env: NodeJS.ProcessEnv = process.env,
+  home = homedir()
+): string[] {
+  const configDirs = [env.CLAUDE_CONFIG_DIR?.trim(), join(home, '.claude')].filter(
+    (dir): dir is string => Boolean(dir)
+  )
+  return [...new Set(configDirs)].flatMap((dir) => [
+    join(dir, 'projects'),
+    join(dir, 'transcripts')
+  ])
+}
 
 async function walkJsonlFiles(dirPath: string): Promise<string[]> {
   const entries = await readdir(dirPath, { withFileTypes: true })
@@ -32,7 +46,7 @@ function appendDiscoveredFiles(target: string[], source: readonly string[]): voi
 }
 
 export async function listClaudeTranscriptFiles(): Promise<string[]> {
-  const roots = [CLAUDE_PROJECTS_DIR, CLAUDE_TRANSCRIPTS_DIR]
+  const roots = resolveClaudeTranscriptRoots()
   const files = await Promise.all(
     roots.map(async (root) => {
       try {

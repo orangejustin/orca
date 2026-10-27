@@ -225,7 +225,9 @@ function installWillQuitHandler(): void {
       state.claudeUsage?.flush(),
       state.codexUsage?.flush(),
       state.openCodeUsage?.flush(),
-      state.museUsage?.flush()
+      state.museUsage?.flush(),
+      ...[...state.usageAdapters.values()].map((adapter) => adapter.flush()),
+      state.usageService?.flush()
     ]).then(() => {})
     const browserClientHostShutdown = shutdownPairedRuntimeBrowserClientHosts()
     const skillUploadShutdown = state.runtime?.disposeSkillUploadSessions() ?? Promise.resolve()

@@ -4,6 +4,27 @@ import type {
   ClaudeUsageLocationBreakdown,
   ClaudeUsageSession
 } from './types'
+import {
+  addClaudeTierAboveTokens,
+  claudeRequestTierAboveTokens,
+  NO_CLAUDE_TIER_ABOVE,
+  type ClaudeTierAboveTokens
+} from './claude-model-pricing'
+
+function foldTierAbove(
+  target: { tierAboveTokens?: ClaudeTierAboveTokens },
+  source: ClaudeTierAboveTokens | undefined | null
+): void {
+  if (!source) {
+    return
+  }
+  target.tierAboveTokens ??= { ...NO_CLAUDE_TIER_ABOVE }
+  addClaudeTierAboveTokens(target.tierAboveTokens, source)
+}
+
+function cloneTierAbove<T extends { tierAboveTokens?: ClaudeTierAboveTokens }>(row: T): T {
+  return row.tierAboveTokens ? { ...row, tierAboveTokens: { ...row.tierAboveTokens } } : { ...row }
+}
 
 export function mergeClaudeSessions(
   target: Map<string, ClaudeUsageSession>,
@@ -43,8 +64,9 @@ export function mergeClaudeSessions(
         existingLocation.cacheReadTokens += location.cacheReadTokens
         existingLocation.cacheWriteTokens += location.cacheWriteTokens
         existingLocation.cacheWrite1hTokens += location.cacheWrite1hTokens
+        foldTierAbove(existingLocation, location.tierAboveTokens)
       } else {
-        existing.locationBreakdown.push({ ...location })
+        existing.locationBreakdown.push(cloneTierAbove(location))
       }
     }
   }
@@ -58,7 +80,7 @@ export function mergeClaudeDailyAggregates(
     const key = [aggregate.day, aggregate.model ?? 'unknown', aggregate.projectKey].join('::')
     const existing = target.get(key)
     if (!existing) {
-      target.set(key, { ...aggregate })
+      target.set(key, cloneTierAbove(aggregate))
       continue
     }
     existing.turnCount += aggregate.turnCount
@@ -68,6 +90,7 @@ export function mergeClaudeDailyAggregates(
     existing.cacheReadTokens += aggregate.cacheReadTokens
     existing.cacheWriteTokens += aggregate.cacheWriteTokens
     existing.cacheWrite1hTokens += aggregate.cacheWrite1hTokens
+    foldTierAbove(existing, aggregate.tierAboveTokens)
   }
 }
 
@@ -122,6 +145,14 @@ export function aggregateClaudeUsage(turns: ClaudeUsageAttributedTurn[]): {
     }
 
     const session = sessionsById.get(turn.sessionId)!
+    const tierAbove = claudeRequestTierAboveTokens(
+      turn.model,
+      turn.inputTokens,
+      turn.outputTokens,
+      turn.cacheReadTokens,
+      turn.cacheWriteTokens,
+      turn.cacheWrite1hTokens
+    )
     if (turn.timestamp < session.firstTimestamp) {
       session.firstTimestamp = turn.timestamp
     }
@@ -147,8 +178,9 @@ export function aggregateClaudeUsage(turns: ClaudeUsageAttributedTurn[]): {
       location.cacheReadTokens += turn.cacheReadTokens
       location.cacheWriteTokens += turn.cacheWriteTokens
       location.cacheWrite1hTokens += turn.cacheWrite1hTokens
+      foldTierAbove(location, tierAbove)
     } else {
-      session.locationBreakdown.push({
+      const newLocation: ClaudeUsageLocationBreakdown = {
         locationKey: turn.projectKey,
         projectLabel: turn.projectLabel,
         repoId: turn.repoId,
@@ -159,7 +191,9 @@ export function aggregateClaudeUsage(turns: ClaudeUsageAttributedTurn[]): {
         cacheReadTokens: turn.cacheReadTokens,
         cacheWriteTokens: turn.cacheWriteTokens,
         cacheWrite1hTokens: turn.cacheWrite1hTokens
-      })
+      }
+      foldTierAbove(newLocation, tierAbove)
+      session.locationBreakdown.push(newLocation)
     }
 
     const dailyKey = [turn.day, turn.model ?? 'unknown', turn.projectKey].join('::')
@@ -174,8 +208,9 @@ export function aggregateClaudeUsage(turns: ClaudeUsageAttributedTurn[]): {
       existingDaily.cacheReadTokens += turn.cacheReadTokens
       existingDaily.cacheWriteTokens += turn.cacheWriteTokens
       existingDaily.cacheWrite1hTokens += turn.cacheWrite1hTokens
+      foldTierAbove(existingDaily, tierAbove)
     } else {
-      dailyByKey.set(dailyKey, {
+      const newDaily: ClaudeUsageDailyAggregate = {
         day: turn.day,
         model: turn.model,
         projectKey: turn.projectKey,
@@ -189,7 +224,9 @@ export function aggregateClaudeUsage(turns: ClaudeUsageAttributedTurn[]): {
         cacheReadTokens: turn.cacheReadTokens,
         cacheWriteTokens: turn.cacheWriteTokens,
         cacheWrite1hTokens: turn.cacheWrite1hTokens
-      })
+      }
+      foldTierAbove(newDaily, tierAbove)
+      dailyByKey.set(dailyKey, newDaily)
     }
   }
 

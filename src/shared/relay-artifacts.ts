@@ -53,6 +53,8 @@ export const RELAY_ARTIFACTS: readonly RelayArtifact[] = [
   { filename: 'relay.js' },
   { filename: 'relay-watcher.js', daemonServiceChild: true },
   { filename: 'relay-ai-vault-service.js', daemonServiceChild: true },
+  // Forked once per usage scan, so a scan never blocks the relay or its terminals.
+  { filename: 'relay-usage-scan.js', daemonServiceChild: true },
   { filename: RELAY_OPENCODE_SQLITE_READER_FILENAME },
   { filename: 'managed-hook-runtime.js' },
   // Forked by the AI Vault title reader; without it a relay answers every WSL

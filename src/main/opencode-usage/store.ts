@@ -30,6 +30,7 @@ import {
   buildOpenCodeUsageSummary
 } from './snapshot-rollups'
 import { UsageProviderStoreLifecycle } from '../usage/usage-provider-store-lifecycle'
+import { openCodeUsageRows, openCodeUsageSessionRefs } from './opencode-usage-rows'
 
 let _openCodeUsageFile: string | null = null
 
@@ -56,6 +57,16 @@ export class OpenCodeUsageStore extends UsageProviderStoreLifecycle<
         selectSessions: (state) => codexOpenCodeTokenSessions(state.sessions)
       },
       logTag: '[opencode-usage]',
+      cli: 'opencode',
+      files: (state) =>
+        state.processedDatabases.map((file) => ({
+          ownedKeys: file.ownedSessionIds,
+          slice: { sessions: file.sessions, dailyAggregates: file.dailyAggregates }
+        })),
+      unify: (state, hostId) => ({
+        rows: openCodeUsageRows(state.dailyAggregates, hostId),
+        sessions: openCodeUsageSessionRefs(state.sessions, hostId)
+      }),
       resolveCacheFile: getOpenCodeUsageFile,
       createDefaultState: getDefaultState,
       normalizeState: normalizePersistedState,

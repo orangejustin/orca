@@ -10,6 +10,8 @@ import { UsageCacheSnapshotWriter } from '../usage-cache-snapshot-writer'
 import { loadKnownUsageWorktreesByRepo } from '../usage-worktree-metadata'
 import type { UsageScanWorktreeRef } from './usage-provider-contract'
 import { createWorktreeRefs, getUsageWorktreeFingerprint } from './usage-worktree-refs'
+import { LOCAL_USAGE_HOST_ID, type UsageRow, type UsageSessionRef } from './query/unified-usage-row'
+import { usageFileDigest } from './hosts/usage-file-digest'
 
 const STALE_MS = 5 * 60_000
 
@@ -32,12 +34,27 @@ type UsageProviderScanProjection<
   State extends UsageProviderStoreState<SourceKey>
 > = Pick<State, SourceKey | 'sessions' | 'dailyAggregates'>
 
+/** A store's contribution to the cross-CLI query, in CLI-neutral rows. */
+export type UnifiedUsageData = { rows: UsageRow[]; sessions: UsageSessionRef[] }
+
+/** One source file's rows. The digest names its contents so a copy on another host can be spotted. */
+export type UnifiedUsageFile = UnifiedUsageData & { digest: string | null }
+
 type UsageProviderStoreLifecycleConfig<
   SourceKey extends string,
   State extends UsageProviderStoreState<SourceKey>,
   DataPresenceKey extends string
 > = {
   logTag: string
+  /** The adapter id this store reports under in the cross-CLI query. */
+  cli: string
+  /** Maps this CLI's own aggregates into unified rows, applying its token semantics. */
+  unify: (state: State, hostId: string) => UnifiedUsageData
+  /** The per-file slices of the cache: what each file contributed and which events it owns. */
+  files: (state: State) => {
+    ownedKeys: readonly string[]
+    slice: Pick<State, 'sessions' | 'dailyAggregates'>
+  }[]
   resolveCacheFile: () => string
   createDefaultState: () => State
   normalizeState: (state: State) => State
@@ -84,6 +101,41 @@ export abstract class UsageProviderStoreLifecycle<
       [this.config.dataPresenceKey]:
         this.state.sessions.length > 0 || this.state.dailyAggregates.length > 0
     } as PublicUsageProviderScanState<DataPresenceKey>
+  }
+
+  getCliId(): string {
+    return this.config.cli
+  }
+
+  isEnabled(): boolean {
+    return this.state.scanState.enabled
+  }
+
+  /**
+   * Local rows, one entry per source file. Turning collection off stops new scans but keeps the
+   * history, so it still counts here; leaving a CLI out of a total is a separate, explicit choice.
+   */
+  getUnifiedUsageFiles(hostId = LOCAL_USAGE_HOST_ID): UnifiedUsageFile[] {
+    return this.config.files(this.state).map((file) => ({
+      digest: usageFileDigest(file.ownedKeys),
+      ...this.config.unify({ ...this.state, ...file.slice }, hostId)
+    }))
+  }
+
+  /**
+   * Maps a source file read from another machine into rows, with this CLI's token semantics.
+   * The data is untrusted and shaped like this CLI's own cache, so a mapper that throws on it is
+   * the caller's cue to reject the file, and the rows must be sanitized before they count.
+   */
+  unifyForeignFile(
+    hostId: string,
+    file: { sessions: unknown[]; dailyAggregates: unknown[] }
+  ): UnifiedUsageData {
+    return this.config.unify(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the mapper only reads fields off these arrays, throws on a shape it cannot read, and its rows go through sanitizeUnifiedUsage before they count.
+      { ...this.state, sessions: file.sessions, dailyAggregates: file.dailyAggregates } as State,
+      hostId
+    )
   }
 
   /** Local identity only; callers must use the usage store on the execution host. */

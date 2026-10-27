@@ -14,11 +14,16 @@ function getDefaultUsageWorktreeLabel(pathValue: string): string {
   return basename(pathValue)
 }
 
+/**
+ * @param connectionId the SSH target whose repos to load; null loads the local ones, as before.
+ *   A remote host is scanned on that host, so its worktrees are the ones registered under it.
+ */
 export function loadKnownUsageWorktreesByRepo(
   store: Pick<Store, 'getAllWorktreeMeta'>,
-  repos: Repo[]
+  repos: Repo[],
+  connectionId: string | null = null
 ): Map<string, UsageWorktreeRef[]> {
-  const localRepos = repos.filter((repo) => !repo.connectionId)
+  const localRepos = repos.filter((repo) => (repo.connectionId ?? null) === connectionId)
   // Why: all three usage scanners revisit persisted worktree metadata; index
   // repos once instead of linearly searching the full list for every row.
   const localReposById = new Map<string, Repo>()

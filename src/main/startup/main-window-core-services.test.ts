@@ -26,6 +26,7 @@ const {
       codexUsage: {},
       openCodeUsage: {},
       museUsage: {},
+      usageService: {},
       codexAccounts: {},
       claudeAccounts: {},
       rateLimits: { attach: vi.fn(), start: vi.fn() },

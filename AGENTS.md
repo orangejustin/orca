@@ -96,6 +96,10 @@ All changes must consider the SSH use case. Don't assume local-only execution. B
 
 All changes must consider folder workspaces as well as git worktrees. Don't assume every workspace is a git worktree.
 
+## Usage Statistics
+
+Stats & Usage reads one row shape for every CLI and every host. Before adding a CLI, changing what a host returns for `usage.scan`, or touching how cost is labelled, read [`docs/reference/usage-multi-host.md`](./docs/reference/usage-multi-host.md): a CLI with no reliable on-disk log is reported as unsupported, never estimated from terminal text; an unreachable host keeps its last good figures marked stale, never zero; unpriced models are counted as tokens and excluded from dollars, never priced as zero.
+
 ## Agent Status
 
 The execution host owns agent status in one store, the hook server's, and every reader (sidebar, `worktree ps`, mobile, dashboard) subscribes to it. Before adding a producer, a cache, or a reader-side precedence rule, read [`docs/reference/agent-status-store.md`](./docs/reference/agent-status-store.md): new producers write into that store, and readers keep only presentation policy.
