@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '@/store'
+import { makeTerminalTab } from '@/store/slices/worktrees-slice-test-fixtures'
 import { SESSION_RESTART_REFUSED_BEFORE_STOP } from '../../../../../shared/session-restart-refusal'
 import type { ConnectPanePtySession } from './connect-pane-pty-session'
 import { bindStartFreshSpawn } from './fresh-spawn-start'
@@ -128,13 +129,14 @@ describe('fresh spawn session restart settlement', () => {
       closed.session.disposed = true
       return { id: 'pty-new' }
     })
-    await closed.session.startFreshSpawn()
+    expect(await closed.session.startFreshSpawn()).toBe('pty-new')
     expect(closed.settled).toEqual([null])
+    expect(closed.session.bindActivePanePty).not.toHaveBeenCalled()
   })
 
   it('reattaches the predecessor with the spawn callbacks after a wrapped pre-stop refusal', async () => {
     useAppStore.setState({
-      tabsByWorktree: { wt: [{ id: 'tab', generation: 1 }] },
+      tabsByWorktree: { wt: [makeTerminalTab({ id: 'tab', worktreeId: 'wt', generation: 1 })] },
       terminalLayoutsByTabId: {}
     })
     const wrapped = new Error(
@@ -159,7 +161,7 @@ describe('fresh spawn session restart settlement', () => {
 
   it('does not adopt a predecessor after the pane generation changes', async () => {
     useAppStore.setState({
-      tabsByWorktree: { wt: [{ id: 'tab', generation: 9 }] },
+      tabsByWorktree: { wt: [makeTerminalTab({ id: 'tab', worktreeId: 'wt', generation: 9 })] },
       terminalLayoutsByTabId: {}
     })
     const stale = createSession(async () => {
@@ -176,14 +178,14 @@ describe('fresh spawn session restart settlement', () => {
 
   it('reaches reattach through the real IPC transport when spawn rejects a wrapped refusal', async () => {
     const originalWindow = globalThis.window
-    let emitData: ((payload: { id: string; data: string }) => void) | null = null
+    const emitData: ((payload: { id: string; data: string }) => void)[] = []
     installIpcPtyWindow(originalWindow, {
       data: (callback) => {
-        emitData = callback
+        emitData.push((payload) => callback(payload))
       }
     })
     useAppStore.setState({
-      tabsByWorktree: { wt: [{ id: 'tab', generation: 1 }] },
+      tabsByWorktree: { wt: [makeTerminalTab({ id: 'tab', worktreeId: 'wt', generation: 1 })] },
       terminalLayoutsByTabId: {}
     })
     window.api.pty.spawn = vi
@@ -210,7 +212,7 @@ describe('fresh spawn session restart settlement', () => {
     })
     try {
       await restarted.session.startFreshSpawn()
-      emitData?.({ id: 'pty-old', data: 'still-live' })
+      emitData[0]?.({ id: 'pty-old', data: 'still-live' })
       transport.sendInput('hi', 'driving')
       await flushPtySideEffects()
       expect(received).toEqual(['still-live'])

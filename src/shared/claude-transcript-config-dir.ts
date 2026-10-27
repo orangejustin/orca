@@ -13,7 +13,7 @@ export function claudeConfigDirFromTranscriptPath(
     return null
   }
   const slash = transcript.includes('\\') ? '\\' : '/'
-  const parts = transcript.split(slash).filter((part, index) => part.length > 0 || index === 0)
+  const parts = transcript.split(slash)
   if (parts.at(-1) !== `${id}.jsonl` || parts.length < 4) {
     return null
   }
@@ -21,7 +21,11 @@ export function claudeConfigDirFromTranscriptPath(
   if (projects !== 'projects') {
     return null
   }
-  const rooted = parts[0] === '' || /^[A-Za-z]:$/.test(parts[0] ?? '')
+  const rooted =
+    slash === '/'
+      ? parts[0] === ''
+      : /^[A-Za-z]:$/.test(parts[0] ?? '') ||
+        (parts[0] === '' && parts[1] === '' && !!parts[2] && !!parts[3])
   if (!rooted) {
     return null
   }
@@ -29,5 +33,7 @@ export function claudeConfigDirFromTranscriptPath(
   if (config.length === 0 || (config.length === 1 && config[0] === '')) {
     return null
   }
-  return config.join(slash)
+  return config.length === 1 && /^[A-Za-z]:$/.test(config[0])
+    ? `${config[0]}${slash}`
+    : config.join(slash)
 }

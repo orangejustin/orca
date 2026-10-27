@@ -47,10 +47,11 @@ describe('recordedSessionRestartRefusal', () => {
   })
 
   it('pins a managed Claude home from the session transcript when launch env is empty', () => {
+    const env: Record<string, string> = { ORCA_PANE_KEY: 'pane' }
     const args = {
       resumeOnSelectedAccount: false as const,
       launchAgent: 'claude' as const,
-      env: { ORCA_PANE_KEY: 'pane' },
+      env,
       resumeProviderSession: {
         key: 'session_id' as const,
         id: 'sess-1',

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { makeTerminalTab } from '@/store/slices/worktrees-slice-test-fixtures'
 import {
   flushPtySideEffects,
   installIpcPtyWindow,
@@ -31,7 +32,7 @@ describe('createIpcPtyTransport', () => {
     const { SESSION_RESTART_REFUSED_BEFORE_STOP } =
       await import('../../../../shared/session-restart-refusal')
     useAppStore.setState({
-      tabsByWorktree: { wt: [{ id: 'tab', generation: 1 }] },
+      tabsByWorktree: { wt: [makeTerminalTab({ id: 'tab', worktreeId: 'wt', generation: 1 })] },
       terminalLayoutsByTabId: {}
     })
     const spawn = window.api.pty.spawn as unknown as ReturnType<typeof vi.fn>

@@ -100,7 +100,18 @@ export function finishFailedFreshSpawn(args: {
   args.clearPreSignaledSerializer()
   args.notify(
     reattachRefusedSessionRestart(
-      args.session,
+      {
+        disposed: Boolean(args.session.disposed),
+        transportStreamGeneration: Number(args.session.transportStreamGeneration),
+        tabGeneration: Number(args.session.tabGeneration),
+        cols: Number(args.session.cols),
+        rows: Number(args.session.rows),
+        pane: { leafId: args.session.pane.leafId },
+        deps: { tabId: args.session.deps.tabId, worktreeId: args.session.deps.worktreeId },
+        transport: args.session.transport,
+        bindActivePanePty: (ptyId, options) =>
+          Boolean(args.session.bindActivePanePty(ptyId, options))
+      },
       args.error,
       args.callbacks.callbacks,
       args.callbacks.generation,

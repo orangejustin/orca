@@ -2,7 +2,11 @@ import { useAppStore } from '@/store'
 import type { ColdRestoreAgentResumeStartup, PendingStartupCommand } from './fresh-spawn-types'
 import type { ConnectPanePtySession } from './connect-pane-pty-session'
 import { findTerminalTabForPane } from './terminal-tab-id'
-import type { PtyTransport } from '../pty-transport-types'
+import type { PtyConnectResult, PtyTransport } from '../pty-transport-types'
+
+export function freshSpawnPtyId(result: void | string | PtyConnectResult): string | null {
+  return typeof result === 'string' ? result : (result?.id ?? null)
+}
 
 type FreshSpawnConnectOptions = Parameters<PtyTransport['connect']>[0]
 type FreshSpawnCallbacks = FreshSpawnConnectOptions['callbacks']

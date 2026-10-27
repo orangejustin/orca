@@ -20,7 +20,7 @@ import type {
 } from './fresh-spawn-types'
 
 import type { ConnectPanePtySession } from './connect-pane-pty-session'
-import { freshSpawnTransportConnectOptions } from './fresh-spawn-connect-options'
+import { freshSpawnPtyId, freshSpawnTransportConnectOptions } from './fresh-spawn-connect-options'
 import { createSessionRestartNotifier } from '@/lib/agent-session-restart-verdict'
 import { finishFailedFreshSpawn } from './session-restart-refusal-reattach'
 
@@ -121,14 +121,12 @@ export function bindStartFreshSpawn(session: ConnectPanePtySession): void {
           session.finishReattachLiveDataDeferral(false, outputCallbacks.generation)
           clearPreSignaledSerializer()
           notifySessionRestart(null)
-          return null
+          // A successor mount joins this promise; disposal must not discard its successful spawn.
+          return outputCallbacks.generation === session.transportStreamGeneration
+            ? freshSpawnPtyId(spawnedPtyId)
+            : null
         }
-        const resolvedPtyId =
-          spawnedPtyId && typeof spawnedPtyId === 'object' && 'id' in spawnedPtyId
-            ? spawnedPtyId.id
-            : typeof spawnedPtyId === 'string'
-              ? spawnedPtyId
-              : session.transport.getPtyId()
+        const resolvedPtyId = freshSpawnPtyId(spawnedPtyId) ?? session.transport.getPtyId()
         const deferral: SpawnDeferralReason | null = resolvedPtyId
           ? null
           : session.pendingSpawnDeferral
@@ -259,7 +257,9 @@ export function bindStartFreshSpawn(session: ConnectPanePtySession): void {
         session.finishReattachLiveDataDeferral(Boolean(resolvedPtyId), outputCallbacks.generation)
         if (session.disposed || outputCallbacks.generation !== session.transportStreamGeneration) {
           notifySessionRestart(null)
-          return null
+          return outputCallbacks.generation === session.transportStreamGeneration
+            ? resolvedPtyId
+            : null
         }
         notifySessionRestart(connectResult ?? { id: resolvedPtyId })
         return resolvedPtyId
