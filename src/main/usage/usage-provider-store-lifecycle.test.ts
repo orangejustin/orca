@@ -122,6 +122,8 @@ class TestUsageStore extends UsageProviderStoreLifecycle<
             }))
         },
         logTag: '[test-usage]',
+        cli: 'test',
+        unify: () => ({ rows: [], sessions: [] }),
         resolveCacheFile: () => cacheFile,
         createDefaultState: makeState,
         normalizeState: (state) => state,

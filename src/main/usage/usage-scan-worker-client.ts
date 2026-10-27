@@ -20,6 +20,11 @@ import type {
   MuseUsagePersistedFile,
   MuseUsageSession
 } from '../muse-usage/types'
+import type {
+  TraeUsageDailyAggregate,
+  TraeUsagePersistedFile,
+  TraeUsageSession
+} from '../trae-usage/types'
 import type { UsageScanWorktreeRef } from './usage-provider-contract'
 import type {
   UsageScanWorkerProviderId,
@@ -196,6 +201,25 @@ export async function scanMuseUsageOnWorker(
   const value = await scan({ providerId: 'muse', worktrees, previous })
   if (value.providerId !== 'muse') {
     throw wrongProvider('muse', value.providerId)
+  }
+  return value
+}
+
+/**
+ * Scan Trae CLI usage logs on the shared worker.
+ * @param scan - Dispatch function, injected so tests need no real thread.
+ * @param worktrees - Worktree refs used to attribute usage.
+ * @param previous - Last scan's per-file cache.
+ * @returns Processed files plus the session and daily projections.
+ */
+export async function scanTraeUsageOnWorker(
+  scan: (body: UsageScanWorkerRequestBody) => Promise<UsageScanWorkerValue>,
+  worktrees: UsageScanWorktreeRef[],
+  previous: TraeUsagePersistedFile[]
+): Promise<ProviderScanResult<TraeUsagePersistedFile, TraeUsageSession, TraeUsageDailyAggregate>> {
+  const value = await scan({ providerId: 'trae', worktrees, previous })
+  if (value.providerId !== 'trae') {
+    throw wrongProvider('trae', value.providerId)
   }
   return value
 }

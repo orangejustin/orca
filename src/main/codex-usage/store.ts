@@ -20,6 +20,7 @@ import { resolveCodexAutomationRunUsage } from './codex-automation-run-attributi
 import { buildRecentSessions } from './codex-usage-session-rows'
 import { buildBreakdown, buildDaily, buildSummary } from './codex-usage-rollup-projections'
 import { UsageProviderStoreLifecycle } from '../usage/usage-provider-store-lifecycle'
+import { codexUsageRows, codexUsageSessionRefs } from './codex-usage-rows'
 
 const SCHEMA_VERSION = CODEX_USAGE_SCHEMA_VERSION
 
@@ -90,6 +91,11 @@ export class CodexUsageStore extends UsageProviderStoreLifecycle<
         selectSessions: (state) => codexOpenCodeTokenSessions(state.sessions)
       },
       logTag: '[codex-usage]',
+      cli: 'codex',
+      unify: (state, hostId) => ({
+        rows: codexUsageRows(state.dailyAggregates, hostId),
+        sessions: codexUsageSessionRefs(state.sessions, hostId)
+      }),
       resolveCacheFile: getCodexUsageFile,
       createDefaultState: getDefaultState,
       normalizeState: normalizePersistedState,

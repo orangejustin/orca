@@ -22,6 +22,7 @@ import {
   buildMuseUsageSummary
 } from './snapshot-rollups'
 import type { MuseUsageDailyAggregate, MuseUsagePersistedState, MuseUsageSession } from './types'
+import { museUsageRows, museUsageSessionRefs } from './muse-usage-rows'
 
 let museUsageFile: string | null = null
 
@@ -42,6 +43,11 @@ export class MuseUsageStore extends UsageProviderStoreLifecycle<
   constructor(store: Pick<Store, 'getRepos' | 'getAllWorktreeMeta'>) {
     super(store, {
       logTag: '[muse-usage]',
+      cli: 'muse',
+      unify: (state, hostId) => ({
+        rows: museUsageRows(state.dailyAggregates, hostId),
+        sessions: museUsageSessionRefs(state.sessions, hostId)
+      }),
       resolveCacheFile: getMuseUsageFile,
       createDefaultState: getDefaultMuseUsageState,
       normalizeState: normalizeMuseUsageState,

@@ -20,6 +20,7 @@ import { buildBreakdown, buildDaily, buildSummary } from './claude-usage-report-
 import { buildRecentSessions } from './claude-usage-session-rows'
 import type { AutomationUsageLookupInput } from './claude-usage-automation-attribution'
 import { resolveAutomationRunUsage } from './claude-usage-automation-attribution'
+import { claudeUsageRows, claudeUsageSessionRefs } from './claude-usage-rows'
 
 // Why: v5 widens Claude ownership keys (message-id / uuid fallbacks). Older
 // caches either lack ownership or used narrower keys and can under/over-count
@@ -86,6 +87,11 @@ export class ClaudeUsageStore extends UsageProviderStoreLifecycle<
         selectSessions: (state) => claudeTokenSessions(state.sessions)
       },
       logTag: '[claude-usage]',
+      cli: 'claude',
+      unify: (state, hostId) => ({
+        rows: claudeUsageRows(state.dailyAggregates, hostId),
+        sessions: claudeUsageSessionRefs(state.sessions, hostId)
+      }),
       resolveCacheFile: getClaudeUsageFile,
       createDefaultState: getDefaultState,
       normalizeState: normalizePersistedState,

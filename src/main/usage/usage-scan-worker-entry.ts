@@ -3,6 +3,7 @@ import { scanClaudeUsageFiles } from '../claude-usage/scanner'
 import { scanCodexUsageFiles } from '../codex-usage/scanner'
 import { scanOpenCodeUsageDatabases } from '../opencode-usage/scanner'
 import { scanMuseUsageFiles } from '../muse-usage/scanner'
+import { scanTraeUsageFiles } from '../trae-usage/scanner'
 import type {
   UsageScanWorkerProgress,
   UsageScanWorkerRequest,
@@ -97,6 +98,15 @@ async function runScan(
       const result = await scanMuseUsageFiles(request.worktrees, request.previous, onFilesScanned)
       return {
         providerId: 'muse',
+        source: result.processedFiles,
+        sessions: result.sessions,
+        dailyAggregates: result.dailyAggregates
+      }
+    }
+    case 'trae': {
+      const result = await scanTraeUsageFiles(request.worktrees, request.previous, onFilesScanned)
+      return {
+        providerId: 'trae',
         source: result.processedFiles,
         sessions: result.sessions,
         dailyAggregates: result.dailyAggregates

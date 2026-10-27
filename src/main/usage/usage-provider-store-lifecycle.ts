@@ -10,6 +10,7 @@ import { UsageCacheSnapshotWriter } from '../usage-cache-snapshot-writer'
 import { loadKnownUsageWorktreesByRepo } from '../usage-worktree-metadata'
 import type { UsageScanWorktreeRef } from './usage-provider-contract'
 import { createWorktreeRefs, getUsageWorktreeFingerprint } from './usage-worktree-refs'
+import { LOCAL_USAGE_HOST_ID, type UsageRow, type UsageSessionRef } from './query/unified-usage-row'
 
 const STALE_MS = 5 * 60_000
 
@@ -32,12 +33,19 @@ type UsageProviderScanProjection<
   State extends UsageProviderStoreState<SourceKey>
 > = Pick<State, SourceKey | 'sessions' | 'dailyAggregates'>
 
+/** A store's contribution to the cross-CLI query, in CLI-neutral rows. */
+export type UnifiedUsageData = { rows: UsageRow[]; sessions: UsageSessionRef[] }
+
 type UsageProviderStoreLifecycleConfig<
   SourceKey extends string,
   State extends UsageProviderStoreState<SourceKey>,
   DataPresenceKey extends string
 > = {
   logTag: string
+  /** The adapter id this store reports under in the cross-CLI query. */
+  cli: string
+  /** Maps this CLI's own aggregates into unified rows, applying its token semantics. */
+  unify: (state: State, hostId: string) => UnifiedUsageData
   resolveCacheFile: () => string
   createDefaultState: () => State
   normalizeState: (state: State) => State
@@ -84,6 +92,21 @@ export abstract class UsageProviderStoreLifecycle<
       [this.config.dataPresenceKey]:
         this.state.sessions.length > 0 || this.state.dailyAggregates.length > 0
     } as PublicUsageProviderScanState<DataPresenceKey>
+  }
+
+  getCliId(): string {
+    return this.config.cli
+  }
+
+  isEnabled(): boolean {
+    return this.state.scanState.enabled
+  }
+
+  /** Local rows only; an empty set while collection is off, so a disabled CLI adds nothing. */
+  getUnifiedUsage(): UnifiedUsageData {
+    return this.state.scanState.enabled
+      ? this.config.unify(this.state, LOCAL_USAGE_HOST_ID)
+      : { rows: [], sessions: [] }
   }
 
   /** Local identity only; callers must use the usage store on the execution host. */

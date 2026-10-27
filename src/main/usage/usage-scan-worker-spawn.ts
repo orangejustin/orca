@@ -21,12 +21,18 @@ import type {
   MuseUsagePersistedFile,
   MuseUsageSession
 } from '../muse-usage/types'
+import type {
+  TraeUsageDailyAggregate,
+  TraeUsagePersistedFile,
+  TraeUsageSession
+} from '../trae-usage/types'
 import type { UsageScanWorktreeRef } from './usage-provider-contract'
 import {
   scanClaudeUsageOnWorker,
   scanCodexUsageOnWorker,
   scanMuseUsageOnWorker,
   scanOpenCodeUsageOnWorker,
+  scanTraeUsageOnWorker,
   UsageScanWorkerClient
 } from './usage-scan-worker-client'
 
@@ -149,6 +155,32 @@ export async function scanMuseUsageFilesViaWorker(
   dailyAggregates: MuseUsageDailyAggregate[]
 }> {
   const value = await scanMuseUsageOnWorker(
+    (body) => getSharedClient().scan(body),
+    worktrees,
+    previous
+  )
+  return {
+    processedFiles: value.source,
+    sessions: value.sessions,
+    dailyAggregates: value.dailyAggregates
+  }
+}
+
+/**
+ * Scan Trae CLI usage logs through the shared worker client.
+ * @param worktrees - Worktree refs used to attribute usage.
+ * @param previous - Last scan's per-file cache.
+ * @returns The same projection `scanTraeUsageFiles` returns, computed off the main thread.
+ */
+export async function scanTraeUsageFilesViaWorker(
+  worktrees: UsageScanWorktreeRef[],
+  previous: TraeUsagePersistedFile[] = []
+): Promise<{
+  processedFiles: TraeUsagePersistedFile[]
+  sessions: TraeUsageSession[]
+  dailyAggregates: TraeUsageDailyAggregate[]
+}> {
+  const value = await scanTraeUsageOnWorker(
     (body) => getSharedClient().scan(body),
     worktrees,
     previous
