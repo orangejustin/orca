@@ -39,6 +39,7 @@ const ROOT = join(__dirname, '..', '..')
 const RELAY_ENTRY = join(ROOT, 'src', 'relay', 'relay.ts')
 const WATCHER_ENTRY = join(ROOT, 'src', 'main', 'ipc', 'parcel-watcher-process-entry.ts')
 const AI_VAULT_SERVICE_ENTRY = join(ROOT, 'src', 'relay', 'ai-vault-service-entry.ts')
+const USAGE_SCAN_ENTRY = join(ROOT, 'src', 'relay', 'usage-scan-entry.ts')
 const OPENCODE_SQLITE_READER_ENTRY = join(
   ROOT,
   'src',
@@ -139,6 +140,21 @@ async function buildRelayBundles(outDir) {
     target: 'node18',
     format: 'cjs',
     outfile: join(outDir, 'relay-ai-vault-service.js'),
+    external: ['electron'],
+    sourcemap: false,
+    minify: true,
+    define: {
+      'process.env.NODE_ENV': '"production"'
+    }
+  })
+
+  await build({
+    entryPoints: [USAGE_SCAN_ENTRY],
+    bundle: true,
+    platform: 'node',
+    target: 'node18',
+    format: 'cjs',
+    outfile: join(outDir, 'relay-usage-scan.js'),
     external: ['electron'],
     sourcemap: false,
     minify: true,
