@@ -88,6 +88,11 @@ export class ClaudeUsageStore extends UsageProviderStoreLifecycle<
       },
       logTag: '[claude-usage]',
       cli: 'claude',
+      files: (state) =>
+        state.processedFiles.map((file) => ({
+          ownedKeys: file.ownedDedupeKeys,
+          slice: { sessions: file.sessions, dailyAggregates: file.dailyAggregates }
+        })),
       unify: (state, hostId) => ({
         rows: claudeUsageRows(state.dailyAggregates, hostId),
         sessions: claudeUsageSessionRefs(state.sessions, hostId)

@@ -11,6 +11,7 @@ import { loadKnownUsageWorktreesByRepo } from '../usage-worktree-metadata'
 import type { UsageScanWorktreeRef } from './usage-provider-contract'
 import { createWorktreeRefs, getUsageWorktreeFingerprint } from './usage-worktree-refs'
 import { LOCAL_USAGE_HOST_ID, type UsageRow, type UsageSessionRef } from './query/unified-usage-row'
+import { usageFileDigest } from './hosts/usage-file-digest'
 
 const STALE_MS = 5 * 60_000
 
@@ -36,6 +37,9 @@ type UsageProviderScanProjection<
 /** A store's contribution to the cross-CLI query, in CLI-neutral rows. */
 export type UnifiedUsageData = { rows: UsageRow[]; sessions: UsageSessionRef[] }
 
+/** One source file's rows. The digest names its contents so a copy on another host can be spotted. */
+export type UnifiedUsageFile = UnifiedUsageData & { digest: string | null }
+
 type UsageProviderStoreLifecycleConfig<
   SourceKey extends string,
   State extends UsageProviderStoreState<SourceKey>,
@@ -46,6 +50,11 @@ type UsageProviderStoreLifecycleConfig<
   cli: string
   /** Maps this CLI's own aggregates into unified rows, applying its token semantics. */
   unify: (state: State, hostId: string) => UnifiedUsageData
+  /** The per-file slices of the cache: what each file contributed and which events it owns. */
+  files: (state: State) => {
+    ownedKeys: readonly string[]
+    slice: Pick<State, 'sessions' | 'dailyAggregates'>
+  }[]
   resolveCacheFile: () => string
   createDefaultState: () => State
   normalizeState: (state: State) => State
@@ -102,11 +111,15 @@ export abstract class UsageProviderStoreLifecycle<
     return this.state.scanState.enabled
   }
 
-  /** Local rows only; an empty set while collection is off, so a disabled CLI adds nothing. */
-  getUnifiedUsage(): UnifiedUsageData {
-    return this.state.scanState.enabled
-      ? this.config.unify(this.state, LOCAL_USAGE_HOST_ID)
-      : { rows: [], sessions: [] }
+  /**
+   * Local rows, one entry per source file. Turning collection off stops new scans but keeps the
+   * history, so it still counts here; leaving a CLI out of a total is a separate, explicit choice.
+   */
+  getUnifiedUsageFiles(hostId = LOCAL_USAGE_HOST_ID): UnifiedUsageFile[] {
+    return this.config.files(this.state).map((file) => ({
+      digest: usageFileDigest(file.ownedKeys),
+      ...this.config.unify({ ...this.state, ...file.slice }, hostId)
+    }))
   }
 
   /** Local identity only; callers must use the usage store on the execution host. */

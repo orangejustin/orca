@@ -92,6 +92,11 @@ export class CodexUsageStore extends UsageProviderStoreLifecycle<
       },
       logTag: '[codex-usage]',
       cli: 'codex',
+      files: (state) =>
+        state.processedFiles.map((file) => ({
+          ownedKeys: file.ownedEventKeys,
+          slice: { sessions: file.sessions, dailyAggregates: file.dailyAggregates }
+        })),
       unify: (state, hostId) => ({
         rows: codexUsageRows(state.dailyAggregates, hostId),
         sessions: codexUsageSessionRefs(state.sessions, hostId)

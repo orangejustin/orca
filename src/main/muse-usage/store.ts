@@ -44,6 +44,11 @@ export class MuseUsageStore extends UsageProviderStoreLifecycle<
     super(store, {
       logTag: '[muse-usage]',
       cli: 'muse',
+      files: (state) =>
+        state.processedFiles.map((file) => ({
+          ownedKeys: file.ownedEventKeys,
+          slice: { sessions: file.sessions, dailyAggregates: file.dailyAggregates }
+        })),
       unify: (state, hostId) => ({
         rows: museUsageRows(state.dailyAggregates, hostId),
         sessions: museUsageSessionRefs(state.sessions, hostId)

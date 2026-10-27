@@ -53,7 +53,11 @@ export type UsageHostCoverage = {
 export type UsageDedupeNote = {
   /** Files found identical on more than one host and counted once. */
   duplicateFiles: number
-  /** Sessions present on several hosts with different contents; counted from the larger copy. */
+  /**
+   * Sessions found on several hosts with different contents (a log copied, then continued on both).
+   * Both copies are counted, because rows cannot be traced back to a session, so totals for these
+   * may overstate; the number says how many sessions that could affect.
+   */
   overlappingSessions: number
 }
 

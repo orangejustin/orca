@@ -58,6 +58,11 @@ export class OpenCodeUsageStore extends UsageProviderStoreLifecycle<
       },
       logTag: '[opencode-usage]',
       cli: 'opencode',
+      files: (state) =>
+        state.processedDatabases.map((file) => ({
+          ownedKeys: file.ownedSessionIds,
+          slice: { sessions: file.sessions, dailyAggregates: file.dailyAggregates }
+        })),
       unify: (state, hostId) => ({
         rows: openCodeUsageRows(state.dailyAggregates, hostId),
         sessions: openCodeUsageSessionRefs(state.sessions, hostId)

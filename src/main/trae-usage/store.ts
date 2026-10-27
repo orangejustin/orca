@@ -27,6 +27,11 @@ export class TraeUsageStore extends UsageProviderStoreLifecycle<
     super(store, {
       logTag: '[trae-usage]',
       cli: TRAE_USAGE_CLI,
+      files: (state) =>
+        state.processedFiles.map((file) => ({
+          ownedKeys: file.ownedEventKeys,
+          slice: { sessions: file.sessions, dailyAggregates: file.dailyAggregates }
+        })),
       unify: (state, hostId) => ({
         rows: traeUsageRows(state.dailyAggregates, hostId),
         sessions: traeUsageSessionRefs(state.sessions, hostId)
