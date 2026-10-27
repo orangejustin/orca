@@ -23,6 +23,10 @@ export type ClaudeUsageSummary = {
   cacheWriteTokens: number
   cacheReuseRate: number | null
   estimatedCostUsd: number | null
+  /** Some tokens belong to a model with no price entry, so `estimatedCostUsd` understates the bill. */
+  hasUnpricedModels: boolean
+  /** Share of billable tokens that were priced; null when there are none. */
+  pricedTokenShare: number | null
   topModel: string | null
   topProject: string | null
   hasAnyClaudeData: boolean
@@ -46,6 +50,7 @@ export type ClaudeUsageBreakdownRow = {
   cacheReadTokens: number
   cacheWriteTokens: number
   estimatedCostUsd: number | null
+  hasUnpricedTokens: boolean
 }
 
 export type ClaudeUsageSessionRow = {

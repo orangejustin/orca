@@ -25,7 +25,8 @@ import { resolveAutomationRunUsage } from './claude-usage-automation-attribution
 // caches either lack ownership or used narrower keys and can under/over-count
 // after fork reclaim (#8006). v6 adds the 1-hour cache-write split, which older
 // caches never recorded, so their cost estimates stay stuck at the 5m rate (#15993).
-const SCHEMA_VERSION = 6
+// v7 records per-request long-context tokens, so tier pricing no longer sees a day's total.
+const SCHEMA_VERSION = 7
 
 // Why: capture the path after configureDevUserDataPath() but before app.setName()
 // mutates Electron's derived userData location, matching the persistence/store pattern.

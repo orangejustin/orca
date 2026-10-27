@@ -1,3 +1,5 @@
+import type { ClaudeTierAboveTokens } from './claude-model-pricing'
+
 export type ClaudeUsageProcessedFile = {
   path: string
   mtimeMs: number
@@ -16,6 +18,8 @@ export type ClaudeUsageLocationBreakdown = {
   cacheReadTokens: number
   cacheWriteTokens: number
   cacheWrite1hTokens: number
+  /** Long-context tokens summed per request; absent for models with no tier. */
+  tierAboveTokens?: ClaudeTierAboveTokens
 }
 
 export type ClaudeUsageSession = {
@@ -50,6 +54,8 @@ export type ClaudeUsageDailyAggregate = {
   cacheReadTokens: number
   cacheWriteTokens: number
   cacheWrite1hTokens: number
+  /** Long-context tokens summed per request; absent for models with no tier. */
+  tierAboveTokens?: ClaudeTierAboveTokens
 }
 
 export type ClaudeUsagePersistedState = {

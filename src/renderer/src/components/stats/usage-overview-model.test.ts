@@ -64,6 +64,8 @@ describe('usage overview model', () => {
       cacheWriteTokens: 500,
       cacheReuseRate: 0.8,
       estimatedCostUsd: 0.04,
+      hasUnpricedModels: false,
+      pricedTokenShare: 1,
       topModel: 'claude-sonnet-4-5',
       topProject: 'orca-main',
       hasAnyClaudeData: true

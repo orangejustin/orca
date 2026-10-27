@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { claudeRequestTierAboveTokens } from './claude-model-pricing'
 import type { ClaudeUsagePersistedState } from './types'
 
 const { getPathMock } = vi.hoisted(() => ({
@@ -480,7 +481,10 @@ describe('ClaudeUsageStore', () => {
         outputTokens: 300_000,
         cacheReadTokens: 300_000,
         cacheWriteTokens: 300_000,
-        cacheWrite1hTokens: 0
+        cacheWrite1hTokens: 0,
+        // One 300k-per-bucket request: the tier sums a real scan records for it.
+        tierAboveTokens:
+          claudeRequestTierAboveTokens(model, 300_000, 300_000, 300_000, 300_000) ?? undefined
       }))
     })
 

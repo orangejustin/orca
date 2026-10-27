@@ -1,6 +1,10 @@
 import type { AutomationRunUsage } from '../../shared/automations-types'
 import type { ClaudeUsagePersistedState } from './types'
-import { estimateCostUsd } from './claude-model-pricing'
+import {
+  addClaudeTierAboveTokens,
+  estimateCostUsd,
+  NO_CLAUDE_TIER_ABOVE
+} from './claude-model-pricing'
 import { shouldForceAutomationUsageScan } from '../usage/automation-usage-scan-forcing'
 
 const AUTOMATION_ATTRIBUTION_WINDOW_MS = 5 * 60_000
@@ -103,6 +107,9 @@ export async function resolveAutomationRunUsage(
       acc.cacheReadTokens += entry.cacheReadTokens
       acc.cacheWriteTokens += entry.cacheWriteTokens
       acc.cacheWrite1hTokens += entry.cacheWrite1hTokens
+      if (entry.tierAboveTokens) {
+        addClaudeTierAboveTokens(acc.tierAboveTokens, entry.tierAboveTokens)
+      }
       return acc
     },
     {
@@ -111,7 +118,8 @@ export async function resolveAutomationRunUsage(
       outputTokens: 0,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
-      cacheWrite1hTokens: 0
+      cacheWrite1hTokens: 0,
+      tierAboveTokens: { ...NO_CLAUDE_TIER_ABOVE }
     }
   )
   const estimatedCostUsd = estimateCostUsd(
@@ -120,7 +128,8 @@ export async function resolveAutomationRunUsage(
     totals.outputTokens,
     totals.cacheReadTokens,
     totals.cacheWriteTokens,
-    totals.cacheWrite1hTokens
+    totals.cacheWrite1hTokens,
+    totals.tierAboveTokens
   )
 
   return {
