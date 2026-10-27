@@ -2252,6 +2252,26 @@
           "eb6a066185": "claude",
           "eee19cfade": "overview"
         },
+        "UsageOverviewPane": {
+          "0ea0cae435": "Enable Claude",
+          "0eaf937335": "Est. cost",
+          "22ed1b7669": "sessions",
+          "2d13e57f72": "Enable OpenCode",
+          "2f1ee2878b": "Enable Codex",
+          "327603fe8b": "Active days",
+          "33f7b043d2": "Providers",
+          "444585cb41": "with data",
+          "49405ccc8d": "Start tracking tokens",
+          "55c910f4f1": "- some model prices are unavailable",
+          "6c00c46815": "Enable a provider to scan local agent logs and build the combined token ledger.",
+          "70f36452d4": "Cache share",
+          "c760c481c5": "Usage Overview",
+          "ca6bc5fded": "Refresh",
+          "e06d1baf5c": "Refresh usage overview",
+          "ecb0cd8a4c": "enabled -",
+          "enableMuse": "Enable Muse",
+          "noLocalUsageYet": "No local Claude, Codex, OpenCode, or Muse usage found yet. The overview will populate after the next agent session writes token logs."
+        },
         "UsageSessionsTable": {
           "01476891c7": "Last active",
           "0f03975d59": "Events",
@@ -2264,10 +2284,43 @@
           "f6a2c8d019": "Model",
           "faf3444859": "Input"
         },
+        "stats": {
+          "search": {
+            "26bb901fcd": "Orca stats plus Claude, Codex, OpenCode, Muse token analytics and Grok subscription usage."
+          }
+        },
         "usage": {
           "overview": {
+            "model": {
+              "544d6d4c16": "Claude",
+              "bc474051e5": "OpenCode",
+              "eb220d193b": "Codex"
+            },
             "sections": {
-              "9564a3b21b": "sessions -"
+              "0015facc1f": "Cache",
+              "1dd166c920": "Less",
+              "32330a6e66": "{{value0}}: {{value1}} tokens",
+              "3a795542fa": "Combined token mix",
+              "3bc4a01b24": "Combined input, output, and cache tokens across enabled providers.",
+              "3de9bf87fc": "No model yet",
+              "4ff104da47": "Token mix",
+              "52d9221dc0": "Recent token activity heatmap",
+              "57d1448ef8": "Enable",
+              "6762f6a682": "tokens",
+              "69e2b50427": "Daily intensity",
+              "7f270458af": "Output",
+              "9365b14a4e": "New input",
+              "9564a3b21b": "sessions -",
+              "a7f937fb29": "{{value0}} sessions - {{value1}} {{value2}}",
+              "c424eb3f8e": "Best:",
+              "c8f3a2d1e0b4": "turns",
+              "d9a4b3e2f1c5": "events",
+              "e65084cb4b": "reasoning",
+              "f6df0d7d6d": "More",
+              "recentCombinedActivity": "Recent combined Claude, Codex, OpenCode, and Muse token activity.",
+              "statusEnabled": "Enabled",
+              "statusOff": "Off",
+              "statusScanning": "Scanning"
             }
           }
         }
@@ -2882,7 +2935,6 @@
         "openCurrentConversation": "Open the current conversation to continue.",
         "optionRejected": "The agent didn't accept this setting.",
         "outcomeUnknown": "Orca couldn't confirm what happened. Check the chat.",
-        "sendOutcomeLost": "Orca couldn't confirm your message reached the agent. Check the chat, then send it again if needed.",
         "ownerUnproven": "The previous agent in this chat may still be running.",
         "promptPending": "The agent is waiting for an answer to a question or approval.",
         "questionChanged": "This question was already answered or has changed.",
@@ -2892,6 +2944,7 @@
         "reopenChat": "Reopen the chat to check again.",
         "restartFailed": "The agent couldn't restart.",
         "savedByNewerOrca": "Chats were saved by a newer Orca.",
+        "sendOutcomeLost": "Orca couldn't confirm your message reached the agent. Check the chat, then send it again if needed.",
         "settleEarlierMessage": "Wait for your earlier message to go through, or retry it.",
         "startNewChat": "Start a new chat to continue.",
         "terminalAgentHoldsChat": "This chat is still open in a terminal agent.",

@@ -5,6 +5,13 @@ import type {
   OpenCodeUsageSnapshot
 } from '../../shared/opencode-usage-types'
 import type { MuseUsageBreakdownKind, MuseUsageSnapshot } from '../../shared/muse-usage-types'
+import type { UsageQueryFilters } from '../../shared/usage-query-types'
+import type {
+  UsageHostCoverage,
+  UsagePreferences,
+  UsageRefreshArgs,
+  UsageViewSnapshot
+} from '../../shared/usage-service-types'
 import type {
   CodexRateLimitResetResult,
   RateLimitRuntimeTarget,
@@ -46,6 +53,15 @@ export type CodexUsageApi = UsageProviderApi<CodexUsageSnapshot, CodexUsageBreak
 export type OpenCodeUsageApi = UsageProviderApi<OpenCodeUsageSnapshot, OpenCodeUsageBreakdownKind>
 
 export type MuseUsageApi = UsageProviderApi<MuseUsageSnapshot, MuseUsageBreakdownKind>
+
+/** Cross-CLI, cross-host usage. Reading never scans; refresh and syncHosts do. */
+export type UsageServiceApi = {
+  query: (filters: UsageQueryFilters) => Promise<UsageViewSnapshot>
+  refresh: (args?: UsageRefreshArgs) => Promise<void>
+  syncHosts: (args?: UsageRefreshArgs) => Promise<UsageHostCoverage[]>
+  setCollecting: (args: { cli: string; enabled: boolean }) => Promise<void>
+  setPreferences: (preferences: UsagePreferences) => Promise<UsagePreferences>
+}
 
 export type RateLimitsApi = {
   get: () => Promise<RateLimitState>
