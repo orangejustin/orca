@@ -68,6 +68,27 @@ export function collectAgentSessionRestartPlanFromState(state: AppState): AgentS
         ? (state.getAgentLaunchConfigForStatusEntry(entry)?.ompResumeFilePath ?? null)
         : null
     },
+    startupUnavailableReason: (pane) => {
+      const entry = state.agentStatusByPaneKey[makePaneKey(pane.tabId, pane.leafId)]
+      if (!entry || !normalizeAgentProviderSession(entry.providerSession)) {
+        return undefined
+      }
+      if (!state.getAgentLaunchConfigForStatusEntry(entry)) {
+        return 'unknown-launch'
+      }
+      if (!isTuiAgent(pane.agent)) {
+        return undefined
+      }
+      const tab = state.tabsByWorktree[pane.worktreeId]?.find((item) => item.id === pane.tabId)
+      return buildAgentSessionRestartStartup(pane.agent, {
+        tabId: pane.tabId,
+        leafId: pane.leafId,
+        worktreeId: pane.worktreeId,
+        shellOverride: tab?.shellOverride
+      })
+        ? undefined
+        : 'resume-unavailable'
+    },
     enabledCatalog,
     workspaceLabel: (worktreeId) =>
       state.getKnownWorktreeById(worktreeId)?.displayName || worktreeId,

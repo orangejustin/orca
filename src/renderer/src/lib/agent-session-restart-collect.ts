@@ -6,6 +6,7 @@ import { isForeignMachineCodexPtyId } from './codex-pane-selection-lane'
 import {
   planAgentSessionRestarts,
   type AgentSessionRestartPane,
+  type AgentSessionRestartSkipReason,
   type AgentSessionRestartPlan
 } from './agent-session-restart-plan'
 
@@ -34,6 +35,9 @@ export type AgentSessionRestartCollectInput = {
   wsl: (worktreeId: string) => boolean
   foreignPty?: (ptyId: string) => boolean
   shellForeground?: (paneKey: string) => boolean
+  startupUnavailableReason?: (
+    pane: AgentSessionRestartPane
+  ) => AgentSessionRestartSkipReason | undefined
   ompResumeFilePath?: (paneKey: string) => string | null
 }
 
@@ -56,7 +60,7 @@ export function collectAgentSessionRestartPlan(
         if (!status?.agentType) {
           continue
         }
-        panes.push({
+        const pane: AgentSessionRestartPane = {
           ptyId,
           tabId: tab.id,
           leafId,
@@ -76,7 +80,9 @@ export function collectAgentSessionRestartPlan(
           executionHostId: input.executionHostId(worktreeId),
           foreignPty: foreignPty(ptyId),
           wsl: input.wsl(worktreeId)
-        })
+        }
+        pane.startupUnavailableReason = input.startupUnavailableReason?.(pane)
+        panes.push(pane)
       }
     }
   }

@@ -34,7 +34,7 @@ function pane(overrides: Partial<AgentSessionRestartPane> = {}): AgentSessionRes
 }
 
 describe('planAgentSessionRestarts', () => {
-  it('groups enabled catalog rows in catalog order and disables a zero count', () => {
+  it('groups live agents without filling the menu with unused catalog entries', () => {
     const plan = planAgentSessionRestarts({
       enabledCatalog: ENABLED,
       panes: [
@@ -51,18 +51,9 @@ describe('planAgentSessionRestarts', () => {
 
     expect(plan.rows.map((row) => formatAgentSessionRestartRowLabel(row))).toEqual([
       'Claude (2)',
-      'Codex (0)',
-      'Grok (1)',
-      'Antigravity (0)',
-      'Cursor (0)',
-      'Trae (0)'
+      'Grok (1)'
     ])
-    expect(plan.rows.filter((row) => row.disabled).map((row) => row.agent)).toEqual([
-      'codex',
-      'antigravity',
-      'cursor',
-      'trae'
-    ])
+    expect(plan.rows.filter((row) => row.disabled)).toEqual([])
     expect(plan.restartAllCount).toBe(3)
     expect(formatRestartAllAgentsLabel(plan.restartAllCount)).toBe('Restart all agents (3)')
   })
@@ -72,7 +63,7 @@ describe('planAgentSessionRestarts', () => {
       enabledCatalog: ['claude', 'codex'],
       panes: [pane()]
     })
-    expect(idle.rows.map((row) => row.agent)).toEqual(['claude', 'codex'])
+    expect(idle.rows.map((row) => row.agent)).toEqual(['claude'])
 
     const running = planAgentSessionRestarts({
       enabledCatalog: ['claude', 'codex'],
@@ -87,8 +78,7 @@ describe('planAgentSessionRestarts', () => {
     })
     expect(running.rows.map((row) => [row.agent, row.liveCount, row.disabled])).toEqual([
       ['claude', 1, false],
-      ['codex', 0, true],
-      ['trae', 1, false]
+      ['trae', 1, true]
     ])
   })
 
@@ -135,10 +125,7 @@ describe('planAgentSessionRestarts', () => {
       'local-grok'
     ])
     expect(plan.restartAllCount).toBe(1)
-    expect(plan.rows.map((row) => [row.agent, row.liveCount])).toEqual([
-      ['claude', 0],
-      ['grok', 1]
-    ])
+    expect(plan.rows.map((row) => [row.agent, row.liveCount])).toEqual([['grok', 1]])
     expect(
       plan.targets.map((target) => (target.kind === 'skipped' ? target.reason : target.kind))
     ).toEqual([

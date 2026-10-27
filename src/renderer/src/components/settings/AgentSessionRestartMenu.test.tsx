@@ -68,6 +68,7 @@ describe('AgentSessionRestartMenuView', () => {
       root?.render(
         <AgentSessionRestartMenuView
           rows={rows}
+          unavailable={['Codex: no saved conversation ID yet; complete a turn and try again']}
           restartAllCount={3}
           outcomes={outcomes}
           running={false}
@@ -84,6 +85,9 @@ describe('AgentSessionRestartMenuView', () => {
       'Codex (0)',
       'Grok (1)'
     ])
+    expect(
+      container.querySelector('[data-testid="agent-session-restart-unavailable"]')?.textContent
+    ).toContain('no saved conversation ID yet')
     expect(buttons[3]?.disabled).toBe(true)
     buttons[2]?.click()
     expect(onRestart).toHaveBeenCalledWith('claude')

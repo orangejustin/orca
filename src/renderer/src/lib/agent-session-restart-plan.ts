@@ -17,6 +17,7 @@ export type AgentSessionRestartSkipReason =
   | 'resume-unsupported'
   | 'missing-session'
   | 'unknown-launch'
+  | 'resume-unavailable'
   | 'wsl-resume-unsupported'
   | 'unknown-host'
   | 'remote-unsupported'
@@ -67,6 +68,7 @@ export type AgentSessionRestartPane = {
   /** The pane's foreground is a shell, so the status row is not the live process. */
   shellForeground?: boolean
   ompResumeFilePath?: string | null
+  startupUnavailableReason?: AgentSessionRestartSkipReason
   executionHostId: string | null
   foreignPty: boolean
   /** Codex inside a WSL guest cannot be exact-resumed from this host. */
@@ -83,6 +85,7 @@ export type AgentSessionRestartMenuRow = {
   agent: TuiAgent
   label: string
   liveCount: number
+  restartableCount?: number
   disabled: boolean
 }
 
@@ -119,7 +122,9 @@ export function formatRestartAllAgentsLabel(count: number): string {
 }
 
 export function formatAgentSessionRestartRowLabel(row: AgentSessionRestartMenuRow): string {
-  return `${row.label} (${row.liveCount})`
+  return row.restartableCount !== undefined && row.restartableCount !== row.liveCount
+    ? `${row.label} (${row.restartableCount} of ${row.liveCount} can restart)`
+    : `${row.label} (${row.liveCount})`
 }
 
 export function agentSessionRestartSkipMessage(reason: AgentSessionRestartSkipReason): string {
@@ -127,9 +132,11 @@ export function agentSessionRestartSkipMessage(reason: AgentSessionRestartSkipRe
     case 'resume-unsupported':
       return 'this CLI cannot resume a session'
     case 'missing-session':
-      return 'the running session has no resume id'
+      return 'no saved conversation ID yet; complete a turn and try again'
     case 'unknown-launch':
-      return 'the original launch settings are not recorded, so it was left running'
+      return 'original launch settings are unavailable; start a new agent using Orca to enable safe restart'
+    case 'resume-unavailable':
+      return 'the recorded session cannot be resumed safely; the original process was left running'
     case 'stale-status':
       return 'the saved status is not a live agent'
     case 'non-terminal':
@@ -183,7 +190,9 @@ export function planAgentSessionRestarts(
     }
     seen.add(agent)
     const liveCount = liveCountByAgent.get(agent) ?? 0
-    rows.push(menuRow(agent, liveCount))
+    if (liveCount > 0) {
+      rows.push(menuRow(agent, liveCount))
+    }
   }
   const extras = [...liveCountByAgent.keys()]
     .filter((agent) => !seen.has(agent))
@@ -192,10 +201,16 @@ export function planAgentSessionRestarts(
     rows.push(menuRow(agent, liveCountByAgent.get(agent) ?? 0))
   }
 
+  for (const row of rows) {
+    row.restartableCount = targets.filter(
+      (target) => target.pane.agent === row.agent && target.kind !== 'skipped'
+    ).length
+    row.disabled = row.restartableCount === 0
+  }
   return {
     rows,
     targets,
-    restartAllCount: [...liveCountByAgent.values()].reduce((sum, count) => sum + count, 0)
+    restartAllCount: targets.filter((target) => target.kind !== 'skipped').length
   }
 }
 
@@ -264,6 +279,10 @@ export function classifyAgentSessionRestartPane(
     return skipped('missing-session')
   }
 
+  if (pane.startupUnavailableReason) {
+    return skipped(pane.startupUnavailableReason)
+  }
+
   const fence: AgentSessionRestartFence = {
     ptyId: pane.ptyId,
     tabId: pane.tabId,
@@ -288,6 +307,8 @@ export function classifyAgentSessionRestartPane(
 function targetCountsAsLive(target: AgentSessionRestartTarget): boolean {
   return (
     target.kind !== 'skipped' ||
+    target.reason === 'unknown-launch' ||
+    target.reason === 'resume-unavailable' ||
     target.reason === 'resume-unsupported' ||
     target.reason === 'missing-session' ||
     target.reason === 'wsl-resume-unsupported'
