@@ -21,6 +21,7 @@ export type AgentSessionRestartController = {
   getSnapshot: () => AgentSessionRestartControllerSnapshot
   subscribe: (listener: () => void) => () => void
   request: (agent: TuiAgent | 'all') => Promise<void>
+  dismiss: () => void
   promote: () => Promise<void>
   hasWaiting: () => boolean
   isRunning: () => boolean
@@ -124,6 +125,7 @@ export function createAgentSessionRestartController(deps: {
       promoteAgain = true
       return
     }
+    outcomes = outcomes.filter((outcome) => waiting.has(outcome.ptyId))
     running = true
     publish()
     try {
@@ -196,6 +198,13 @@ export function createAgentSessionRestartController(deps: {
       }
     },
     request,
+    dismiss: () => {
+      if (running) {
+        return
+      }
+      outcomes = outcomes.filter((outcome) => waiting.has(outcome.ptyId))
+      publish()
+    },
     promote,
     hasWaiting: () => waiting.size > 0,
     isRunning: () => running

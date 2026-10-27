@@ -132,9 +132,9 @@ export function agentSessionRestartSkipMessage(reason: AgentSessionRestartSkipRe
     case 'resume-unsupported':
       return 'this CLI cannot resume a session'
     case 'missing-session':
-      return 'no saved conversation ID yet; complete a turn and try again'
+      return 'no saved conversation ID; use Restart with command or complete a turn'
     case 'unknown-launch':
-      return 'original launch settings are unavailable; start a new agent using Orca to enable safe restart'
+      return 'original launch settings are unavailable; use Restart with command'
     case 'resume-unavailable':
       return 'the recorded session cannot be resumed safely; the original process was left running'
     case 'stale-status':

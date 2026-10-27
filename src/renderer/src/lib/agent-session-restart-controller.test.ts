@@ -42,6 +42,44 @@ function outcome(
 }
 
 describe('createAgentSessionRestartController', () => {
+  it('replaces completed results on each request and dismisses them', async () => {
+    let ptyId = 'old-pty'
+    const controller = createAgentSessionRestartController({
+      plan: () =>
+        planAgentSessionRestarts({ enabledCatalog: ['claude'], panes: [pane({ ptyId })] }),
+      run: async (targets) => targets.map((target) => outcome(target.pane.ptyId, 'succeeded'))
+    })
+    await controller.request('all')
+    ptyId = 'replacement-pty'
+    await controller.request('all')
+    expect(controller.getSnapshot().outcomes.map((item) => item.ptyId)).toEqual(['replacement-pty'])
+    controller.dismiss()
+    expect(controller.getSnapshot().outcomes).toEqual([])
+  })
+
+  it('dismissal and a new scope keep pending work and its original fence', async () => {
+    let busy = true
+    const controller = createAgentSessionRestartController({
+      plan: () =>
+        planAgentSessionRestarts({
+          enabledCatalog: ['claude'],
+          panes: [pane({ state: busy ? 'working' : 'done' })]
+        }),
+      run: async (targets) =>
+        targets.map((target) =>
+          outcome(target.pane.ptyId, target.kind === 'queued' ? 'queued' : 'succeeded')
+        )
+    })
+    await controller.request('claude')
+    controller.dismiss()
+    await controller.request('codex')
+    expect(controller.hasWaiting()).toBe(true)
+    expect(controller.getSnapshot().outcomes[0]?.status).toBe('queued')
+    busy = false
+    await controller.promote()
+    expect(controller.getSnapshot().outcomes[0]?.status).toBe('succeeded')
+  })
+
   it('keeps a busy agent queued and restarts it once the same session is idle', async () => {
     let busy = true
     const run = vi.fn(async (targets) =>

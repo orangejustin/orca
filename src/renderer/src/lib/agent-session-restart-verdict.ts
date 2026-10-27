@@ -32,9 +32,10 @@ export function sessionRestartCatchResult(error: unknown): AgentSessionRestartSp
 export function createSessionRestartNotifier(
   readStartup: () => AgentSessionRestartSettlementSource | null | undefined
 ): (result: AgentSessionRestartSpawnResult | null) => void {
+  const startup = readStartup()
   const once = { notified: false }
   return (result) => {
-    settleAgentSessionRestart(readStartup(), result, once)
+    settleAgentSessionRestart(startup, result, once)
   }
 }
 

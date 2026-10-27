@@ -1,12 +1,15 @@
-import { useMemo, useSyncExternalStore } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
+import { ChevronDown, RotateCcw } from 'lucide-react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { AgentSessionRestartCommandDialog } from './AgentSessionRestartCommandDialog'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import type { TuiAgent } from '../../../../shared/tui-agent'
@@ -14,6 +17,7 @@ import {
   agentSessionRestartSkipMessage,
   formatAgentSessionRestartRowLabel,
   formatRestartAllAgentsLabel,
+  type AgentSessionRestartTarget,
   type AgentSessionRestartMenuRow
 } from '@/lib/agent-session-restart-plan'
 import {
@@ -26,6 +30,7 @@ import {
   getAgentSessionRestartController
 } from '@/lib/agent-session-restart-service'
 
+const NO_COMMAND_PANES: readonly AgentSessionRestartTarget[] = []
 const NO_UNAVAILABLE: readonly string[] = []
 
 export function AgentSessionRestartMenu(): React.JSX.Element {
@@ -55,6 +60,7 @@ export function AgentSessionRestartMenu(): React.JSX.Element {
     launchConfigs,
     sleepingSessions
   ])
+  const [commandTarget, setCommandTarget] = useState<AgentSessionRestartTarget | null>(null)
   const controller = getAgentSessionRestartController()
   const report = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const otherHostSkipped = plan.targets.some(
@@ -64,30 +70,47 @@ export function AgentSessionRestartMenu(): React.JSX.Element {
   )
 
   return (
-    <AgentSessionRestartMenuView
-      rows={plan.rows}
-      unavailable={plan.targets.flatMap((target) =>
-        target.kind === 'skipped'
-          ? [`${target.label}: ${agentSessionRestartSkipMessage(target.reason)}`]
-          : []
-      )}
-      restartAllCount={plan.restartAllCount}
-      outcomes={report.outcomes}
-      running={report.running}
-      hostNote={
-        plan.restartAllCount === 0 && otherHostSkipped
-          ? translate(
-              'settings.manageSessions.restartOtherHost',
-              'This computer cannot replace agents on another host, so those sessions were left running.'
-            )
-          : null
-      }
-      onRestart={(agent) => {
-        void controller.request(agent).catch((error: unknown) => {
-          console.warn('[session-restart] request failed:', error)
-        })
-      }}
-    />
+    <>
+      <AgentSessionRestartMenuView
+        commandPanes={plan.targets.filter(
+          (target) =>
+            target.kind === 'skipped' &&
+            (target.reason === 'unknown-launch' ||
+              target.reason === 'missing-session' ||
+              target.reason === 'resume-unavailable')
+        )}
+        onCommandRestart={setCommandTarget}
+        rows={plan.rows}
+        unavailable={plan.targets.flatMap((target) =>
+          target.kind === 'skipped'
+            ? [`${target.label}: ${agentSessionRestartSkipMessage(target.reason)}`]
+            : []
+        )}
+        restartAllCount={plan.restartAllCount}
+        outcomes={report.outcomes}
+        running={report.running}
+        hostNote={
+          plan.restartAllCount === 0 && otherHostSkipped
+            ? translate(
+                'settings.manageSessions.restartOtherHost',
+                'This computer cannot replace agents on another host, so those sessions were left running.'
+              )
+            : null
+        }
+        onDismiss={controller.dismiss}
+        onRestart={(agent) => {
+          void controller.request(agent).catch((error: unknown) => {
+            console.warn('[session-restart] request failed:', error)
+          })
+        }}
+      />
+      {commandTarget ? (
+        <AgentSessionRestartCommandDialog
+          target={commandTarget}
+          onClose={() => setCommandTarget(null)}
+        />
+      ) : null}
+    </>
   )
 }
 
@@ -99,7 +122,10 @@ export function AgentSessionRestartMenuView({
   hostNote = null,
   unavailable = NO_UNAVAILABLE,
   menuOpen,
-  onRestart
+  onRestart,
+  onDismiss,
+  commandPanes = NO_COMMAND_PANES,
+  onCommandRestart
 }: {
   rows: readonly AgentSessionRestartMenuRow[]
   restartAllCount: number
@@ -109,6 +135,9 @@ export function AgentSessionRestartMenuView({
   unavailable?: readonly string[]
   menuOpen?: boolean
   onRestart: (agent: TuiAgent | 'all') => void
+  onDismiss?: () => void
+  commandPanes?: readonly AgentSessionRestartTarget[]
+  onCommandRestart?: (target: AgentSessionRestartTarget) => void
 }): React.JSX.Element {
   const summary = summarizeAgentSessionRestartOutcomes(outcomes)
   return (
@@ -118,7 +147,7 @@ export function AgentSessionRestartMenuView({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="xs"
             data-testid="agent-session-restart-trigger"
           >
             <RotateCcw />
@@ -143,37 +172,77 @@ export function AgentSessionRestartMenuView({
               {formatAgentSessionRestartRowLabel(row)}
             </DropdownMenuItem>
           ))}
+          {commandPanes.length > 0 && onCommandRestart ? <DropdownMenuSeparator /> : null}
+          {onCommandRestart
+            ? commandPanes.map((target) => (
+                <DropdownMenuItem
+                  key={target.pane.ptyId}
+                  disabled={running}
+                  onSelect={() => onCommandRestart(target)}
+                >
+                  {translate(
+                    'settings.manageSessions.commandMenu',
+                    'Restart {{agent}} with command…',
+                    { agent: target.label }
+                  )}
+                </DropdownMenuItem>
+              ))
+            : null}
         </DropdownMenuContent>
       </DropdownMenu>
-      {unavailable.length > 0 ? (
-        <ul
-          className="space-y-1 text-xs text-muted-foreground"
-          data-testid="agent-session-restart-unavailable"
-        >
-          {unavailable.map((message, index) => (
-            <li key={`${index}:${message}`}>{message}</li>
-          ))}
-        </ul>
-      ) : null}
       {hostNote ? (
         <p className="text-xs text-muted-foreground" data-testid="agent-session-restart-host-note">
           {hostNote}
         </p>
       ) : null}
       {summary ? (
-        <p className="text-xs text-muted-foreground" data-testid="agent-session-restart-summary">
-          {summary}
-        </p>
-      ) : null}
-      {outcomes.length > 0 ? (
-        <ul
-          className="space-y-1 text-xs text-muted-foreground"
-          data-testid="agent-session-restart-results"
-        >
-          {outcomes.map((outcome) => (
-            <li key={outcome.ptyId}>{formatAgentSessionRestartOutcome(outcome)}</li>
-          ))}
-        </ul>
+        <Collapsible>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span role="status" data-testid="agent-session-restart-summary">
+              {summary}
+            </span>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="xs">
+                {translate('settings.manageSessions.restartDetails', 'Details')}
+                <ChevronDown className="size-3" />
+              </Button>
+            </CollapsibleTrigger>
+            {onDismiss && !running ? (
+              <Button variant="ghost" size="xs" onClick={onDismiss}>
+                {translate('settings.manageSessions.dismissRestartResults', 'Dismiss')}
+              </Button>
+            ) : null}
+          </div>
+          <CollapsibleContent>
+            <ul
+              className="text-xs text-muted-foreground max-h-48 space-y-1 overflow-y-auto scrollbar-sleek py-2"
+              data-testid="agent-session-restart-results"
+            >
+              {outcomes.map((outcome) => (
+                <li key={outcome.ptyId}>{formatAgentSessionRestartOutcome(outcome)}</li>
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
+      ) : unavailable.length > 0 ? (
+        <Collapsible>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="xs">
+              {translate('settings.manageSessions.restartAvailability', 'Restart availability')}
+              <ChevronDown className="size-3" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <ul
+              className="text-xs text-muted-foreground max-h-48 space-y-1 overflow-y-auto scrollbar-sleek py-2"
+              data-testid="agent-session-restart-unavailable"
+            >
+              {unavailable.map((message, index) => (
+                <li key={`${index}:${message}`}>{message}</li>
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
       ) : null}
     </div>
   )

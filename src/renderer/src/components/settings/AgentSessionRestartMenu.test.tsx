@@ -61,6 +61,7 @@ describe('AgentSessionRestartMenuView', () => {
 
   it('restarts one CLI, disables a zero count, and lists a verified result', () => {
     const onRestart = vi.fn()
+    const onDismiss = vi.fn()
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
@@ -73,6 +74,7 @@ describe('AgentSessionRestartMenuView', () => {
           outcomes={outcomes}
           running={false}
           onRestart={onRestart}
+          onDismiss={onDismiss}
         />
       )
     })
@@ -83,11 +85,13 @@ describe('AgentSessionRestartMenuView', () => {
       'Restart all agents (3)',
       'Claude (2)',
       'Codex (0)',
-      'Grok (1)'
+      'Grok (1)',
+      'Details',
+      'Dismiss'
     ])
-    expect(
-      container.querySelector('[data-testid="agent-session-restart-unavailable"]')?.textContent
-    ).toContain('no saved conversation ID yet')
+    expect(container.querySelector('[data-testid="agent-session-restart-unavailable"]')).toBeNull()
+    expect(container.querySelector('[data-testid="agent-session-restart-results"]')).toBeNull()
+    act(() => buttons[5]?.click())
     expect(buttons[3]?.disabled).toBe(true)
     buttons[2]?.click()
     expect(onRestart).toHaveBeenCalledWith('claude')
@@ -95,5 +99,7 @@ describe('AgentSessionRestartMenuView', () => {
       'Restarted: Grok — new process started with original session resume command'
     )
     expect(container.textContent).toContain('1 restarted')
+    act(() => buttons[6]?.click())
+    expect(onDismiss).toHaveBeenCalledOnce()
   })
 })
