@@ -1,6 +1,6 @@
 import type { Store } from '../persistence'
 import { initTraeUsagePath, TraeUsageStore } from '../trae-usage/store'
-import type { UnifiedUsageFile } from './usage-provider-store-lifecycle'
+import type { UnifiedUsageData, UnifiedUsageFile } from './usage-provider-store-lifecycle'
 
 /** What the usage service needs from any CLI's store, whichever way it was wired in. */
 export type UsageAdapterStore = {
@@ -14,6 +14,10 @@ export type UsageAdapterStore = {
   setEnabled(enabled: boolean): Promise<unknown>
   refresh(force?: boolean): Promise<unknown>
   getUnifiedUsageFiles(hostId?: string): UnifiedUsageFile[]
+  unifyForeignFile(
+    hostId: string,
+    file: { sessions: unknown[]; dailyAggregates: unknown[] }
+  ): UnifiedUsageData
   flush(): Promise<void>
 }
 

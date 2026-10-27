@@ -68,3 +68,12 @@ export const USAGE_ADAPTER_CATALOG: readonly UsageAdapterCatalogEntry[] = [
 export function getUsageAdapterCatalogEntry(id: string): UsageAdapterCatalogEntry | undefined {
   return USAGE_ADAPTER_CATALOG.find((entry) => entry.id === id)
 }
+
+/**
+ * Launch modes whose usage is written by another CLI's adapter, so they are covered rather than
+ * unsupported: Agent Teams runs Claude Code, and OpenCode 2 shares OpenCode's database.
+ */
+export const USAGE_ADAPTER_AGENT_ALIASES: Readonly<Record<string, string>> = {
+  'claude-agent-teams': 'claude',
+  opencode2: 'opencode'
+}

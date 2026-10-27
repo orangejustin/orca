@@ -122,6 +122,22 @@ export abstract class UsageProviderStoreLifecycle<
     }))
   }
 
+  /**
+   * Maps a source file read from another machine into rows, with this CLI's token semantics.
+   * The data is untrusted and shaped like this CLI's own cache, so a mapper that throws on it is
+   * the caller's cue to reject the file, and the rows must be sanitized before they count.
+   */
+  unifyForeignFile(
+    hostId: string,
+    file: { sessions: unknown[]; dailyAggregates: unknown[] }
+  ): UnifiedUsageData {
+    return this.config.unify(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the mapper only reads fields off these arrays, throws on a shape it cannot read, and its rows go through sanitizeUnifiedUsage before they count.
+      { ...this.state, sessions: file.sessions, dailyAggregates: file.dailyAggregates } as State,
+      hostId
+    )
+  }
+
   /** Local identity only; callers must use the usage store on the execution host. */
   getAnalyticsSessionIds(providerSessionIds: readonly string[]): Promise<AnalyticsSessionId[]> {
     if (!this.analyticsSessionIds) {
